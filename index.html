@@ -121,7 +121,7 @@ input[type="number"] { font-family: var(--mono); }
 .r-head { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; }
 .r-head h1 { margin: 0; }
 .r-head .muted { grid-column: 1 / -1; margin: 0; }
-.need { margin: 0; text-align: center; }
+.need { margin: 0; }
 .split .share { width: 64px; flex: none; display: grid; place-items: center; border-radius: 6px 999px 999px 6px; padding: 0; }
 </style>
 </head>
@@ -198,10 +198,6 @@ input[type="number"] { font-family: var(--mono); }
   </header>
   <section id="editor" data-step="result" style="display:grid;gap:12px">
     <div class="card">
-      <div class="field"><label class="label" for="title">Order</label><input type="text" id="title" placeholder="Five Guys 10/23"></div>
-      <div class="field"><label class="label" for="venmo">Pay to (your Venmo)</label><input type="text" id="venmo" placeholder="your-username" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
-    </div>
-    <div class="card">
       <span class="label">Items</span>
       <div id="items" style="display:grid;gap:8px"></div>
       <button class="link-btn" id="add-item" type="button">+ Add item</button>
@@ -219,7 +215,10 @@ input[type="number"] { font-family: var(--mono); }
       </div>
       <span class="check" id="check"></span>
     </div>
-    <p class="muted need" id="need">Add your Venmo username and at least one priced item to get the link.</p>
+    <div class="card" id="need">
+      <div class="field" id="venmo-field"><label class="label" for="venmo">Your Venmo</label><input type="text" id="venmo" placeholder="your-username" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+      <p class="muted need" id="need-hint"></p>
+    </div>
     <div class="card" id="result" hidden>
       <div class="ready">
         <span class="label">Send this to the group</span>
@@ -231,10 +230,11 @@ input[type="number"] { font-family: var(--mono); }
         <button class="btn share" id="share" type="button" aria-label="Share link"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></button>
       </div>
       <a class="link-btn" id="preview" target="_blank" rel="noopener">Preview what friends see</a>
+      <button class="link-btn" id="change-venmo" type="button"></button>
     </div>
   </section>
   <footer class="tip" data-step="home result">
-    <a href="https://venmo.com/?txn=pay&amp;audience=private&amp;recipients=zebpykosz&amp;amount=4.00&amp;note=%F0%9F%A5%90%20Croissant%20for%20the%20Tabsies%20maker" target="_blank" rel="noopener">🥐 Buy me a croissant</a>
+    <a href="https://venmo.com/?txn=pay&amp;audience=private&amp;recipients=zebpykosz&amp;amount=2.00&amp;note=%F0%9F%A5%90%20Croissant%20for%20the%20Tabsies%20maker" target="_blank" rel="noopener">🥐 Buy me a croissant</a>
     <span class="muted">Tabsies is free. If it saved you some math, a croissant is appreciated.</span>
   </footer>
 </main>
@@ -345,18 +345,30 @@ function renderTotals() {
   updateLink();
 }
 
+// The Venmo field only shows on the result page when there's no saved username, or when you tap Change.
+let askVenmo = false;
+function showResult() {
+  askVenmo = !$("venmo").value.trim();
+  renderEditor();
+  setStep("result");
+}
+
 // The share link is rebuilt on every edit, so it's always ready to send.
 let shareUrl = "";
 function updateLink() {
   const order = {
-    t: $("title").value.trim(),
     v: $("venmo").value.trim().replace(/^@/, ""),
     i: draft.items.filter(i => i.name.trim() && i.cents > 0).map(i => [i.name.trim(), i.cents]),
     x: draft.extras.reduce((s, x) => s + x.cents, 0),
   };
   const ready = order.v && order.i.length;
   $("result").hidden = !ready;
-  $("need").hidden = ready;
+  $("need").hidden = ready && !askVenmo;
+  $("venmo-field").hidden = !askVenmo;
+  $("need-hint").hidden = ready;
+  $("need-hint").textContent = order.v ? "Add at least one item with a price to get the link." : "Add your Venmo username so friends can pay you.";
+  $("change-venmo").hidden = askVenmo;
+  $("change-venmo").textContent = `Friends pay @${order.v} · Change`;
   shareUrl = ready ? `${location.origin}${location.pathname}#o=${encodeOrder(order)}` : "";
   $("out").textContent = shareUrl;
   $("preview").href = shareUrl;
@@ -371,7 +383,6 @@ function setStep(step) {
 }
 
 function renderEditor() {
-  setStep("result");
   $("items").replaceChildren(...draft.items.map(i => rowFor(draft.items, i, renderTotals)));
   $("extras").replaceChildren(...draft.extras.map(x => rowFor(draft.extras, x, renderTotals)));
   renderTotals();
@@ -428,7 +439,7 @@ async function readImage(file) {
     : unpriced
       ? `Found ${parsed.items.length} items, but ${unpriced} need a price. Fill them in below.`
       : `Found ${parsed.items.length} items. Check them below.`;
-  renderEditor();
+  showResult();
 }
 
 // A self-contained sample of the friend view, so first-time visitors see what the link does.
@@ -484,11 +495,10 @@ function showCreate() {
   $("manual").addEventListener("click", () => {
     draft.items.push({ name: "", cents: 0 });
     $("found").textContent = "Add each item and its price, then the tax, fees and tip.";
-    renderEditor();
+    showResult();
   });
   $("restart").addEventListener("click", () => {
     Object.assign(draft, { items: [], extras: [], receiptTotal: null });
-    $("title").value = "";
     $("file").value = "";
     $("camera").value = "";
     setStep("home");
@@ -496,7 +506,11 @@ function showCreate() {
   $("add-item").addEventListener("click", () => { draft.items.push({ name: "", cents: 0 }); renderEditor(); });
   $("add-extra").addEventListener("click", () => { draft.extras.push({ name: "", cents: 0 }); renderEditor(); });
 
-  $("title").addEventListener("input", updateLink);
+  $("change-venmo").addEventListener("click", () => {
+    askVenmo = true;
+    updateLink();
+    $("venmo").focus();
+  });
   // Your Venmo username is remembered on this device only.
   $("venmo").value = localStorage.getItem("tabsies-venmo") || "";
   $("venmo").addEventListener("input", () => {
@@ -516,7 +530,7 @@ function showCreate() {
     navigator.clipboard.writeText(shareUrl).then(() => { $("copy").textContent = "Copied"; });
   });
   $("share").addEventListener("click", () => {
-    navigator.share({ title: $("title").value.trim() || "Split the bill", text: "Tap what you ordered and pay on Venmo", url: shareUrl });
+    navigator.share({ title: "Split the bill", text: "Tap what you ordered and pay on Venmo", url: shareUrl });
   });
 }
 
