@@ -4,13 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "receipts:generate": "node test/receipts/generate.mjs",
+    "receipts:run": "node test/receipts/run.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@tesseract.js-data/eng": "^1.0.0",
+    "playwright": "^1.63.0",
     "tesseract.js": "^5.1.1"
   }
 }
