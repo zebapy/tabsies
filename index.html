@@ -110,6 +110,7 @@ input[type="number"] { font-family: var(--mono); }
 .split { display: flex; gap: 2px; }
 .split #copy { border-radius: 999px 6px 6px 999px; }
 .split:has(.share[hidden]) #copy { border-radius: 999px; }
+.divider { border: 0; border-top: 1px solid var(--line); margin: 12px 0 0; }
 .why { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
 .why li { display: grid; gap: 2px; padding-left: 14px; border-left: 3px solid var(--accent); }
 .why strong { font-size: 15px; }
@@ -153,6 +154,18 @@ input[type="number"] { font-family: var(--mono); }
     <img class="mascot" src="art/receipt.png" alt="" width="360" height="248">
     <p class="muted" style="margin:0 0 4px">Drop in a receipt, send one link to the group, and everyone taps what they ordered and pays you on Venmo, Cash App or PayPal.</p>
   </header>
+  <label class="drop" id="drop" for="file" data-step="home">
+    <strong>Drop a receipt screenshot</strong>
+    <span class="muted">or tap to choose one, or paste it</span>
+    <span class="muted" id="status"></span>
+  </label>
+  <input type="file" id="file" accept="image/*" hidden>
+  <input type="file" id="camera" accept="image/*" capture="environment" hidden>
+  <div class="alt-actions" data-step="home">
+    <label class="btn ghost camera-btn" for="camera"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo</label>
+    <button class="link-btn" id="manual" type="button">Type it in instead</button>
+  </div>
+  <hr class="divider" data-step="home">
   <section class="stage" data-step="home" aria-label="Example of what your friends see">
     <div class="phone">
       <span class="badge">Example</span>
@@ -174,17 +187,6 @@ input[type="number"] { font-family: var(--mono); }
     <li><strong>Payments fill themselves in</strong><span class="muted">One tap opens Venmo, Cash App or PayPal with the right amount.</span></li>
     <li><strong>Free and private</strong><span class="muted">The receipt is read on your phone, and the order lives in the link. Nothing is stored on a server.</span></li>
   </ul>
-  <label class="drop" id="drop" for="file" data-step="home">
-    <strong>Drop a receipt screenshot</strong>
-    <span class="muted">or tap to choose one, or paste it</span>
-    <span class="muted" id="status"></span>
-  </label>
-  <input type="file" id="file" accept="image/*" hidden>
-  <input type="file" id="camera" accept="image/*" capture="environment" hidden>
-  <div class="alt-actions" data-step="home">
-    <label class="btn ghost camera-btn" for="camera"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo</label>
-    <button class="link-btn" id="manual" type="button">Type it in instead</button>
-  </div>
 
   <section class="loading" data-step="loading" aria-live="polite">
     <img class="mascot" src="art/receipt.png" alt="" width="360" height="248">
