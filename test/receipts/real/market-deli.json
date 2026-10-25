@@ -1,0 +1,19 @@
+{
+  "note": "Grocery/deli receipt photographed in sunlight, held in hand. Two taxes plus a TOTAL TAX line; ends with BALANCE DUE.",
+  "lines": [
+    { "name": "KENS GREEK DRESSING", "qty": 1, "cents": 99 },
+    { "name": "buccaneer sndch", "qty": 1, "cents": 849 },
+    { "name": "Greek Salad", "qty": 1, "cents": 1020 },
+    { "name": "WAGO CALIF COMBO", "qty": 1, "cents": 1099 },
+    { "name": "DEEPRVR KTL SW MAUI", "qty": 1, "cents": 529 },
+    { "name": "BOTTLE DEPOSIT", "qty": 1, "cents": 10 },
+    { "name": "GTS SYN HCRISP APP", "qty": 1, "cents": 300 },
+    { "name": "AV ORG KMBH STRW SGE", "qty": 1, "cents": 299 }
+  ],
+  "expectedFees": [
+    { "label": "BAG FEE", "cents": 10 },
+    { "label": "Sales Tax", "cents": 87 },
+    { "label": "Meals Tax", "cents": 191 }
+  ],
+  "total": 4493
+}

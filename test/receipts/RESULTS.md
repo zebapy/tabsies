@@ -49,6 +49,21 @@ Average time per scan went from 4.2s to 3.6s: the cleaned-up image is quicker fo
 - Flips dark-mode screenshots so the text is always dark.
 - Measures how far the text leans and turns the image level when it's off by more than 0.8°.
 
+## Real receipts
+
+`real/` holds real photos with what's actually on them. Run `npm run receipts:scan -- test/receipts/real/*.jpg`.
+
+| Receipt | Before | After |
+|---|---|---|
+| `market-deli.jpg`: grocery deli slip held in hand in sun, two taxes plus "TOTAL TAX", ends with "BALANCE DUE" | 4 of 8 prices, took "TOTAL TAX" $2.78 as the total | 8 of 8 prices, all fees, adds up to $44.93 |
+
+What it took, beyond the image cleanup:
+- "TOTAL TAX" no longer counts as the receipt total; when the tax lines above it already add up to it, it's skipped.
+- "8 49 A": a price with the decimal point read as a space, followed by tax flags.
+- Tax flags (A, B, *) and stray marks from the edge of the photo are trimmed from names.
+- "DEEPRVR KTL SW MAUI 509 x": the reader got the digits wrong. The item is kept, and since it's the only
+  price missing and the total is known, it gets what's left of the total ($5.29). The app says so.
+
 ## What still goes wrong
 
 1. **Real phone photos (41% of prices).** Several problems at once: perspective, shadow, crumples and grain.

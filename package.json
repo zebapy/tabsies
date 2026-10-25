@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "receipts:generate": "node test/receipts/generate.mjs",
-    "receipts:run": "node test/receipts/run.mjs"
+    "receipts:run": "node test/receipts/run.mjs",
+    "receipts:scan": "node test/receipts/scan.mjs"
   },
   "keywords": [],
   "author": "",

@@ -17,6 +17,8 @@ npm run receipts:run -- --jobs 3             # reads them with index.html + pars
 - `run.mjs` serves the repo, opens `index.html` in headless Chromium and calls the app's own `readImage`,
   so images go through the same enlarging, text reader and `parse.js` a real upload does.
   The text reader is served from `node_modules` instead of the CDN.
+- `scan.mjs` reads real photos (`real/*.jpg`) and prints what the app found, scored against `real/*.json`.
+  `--root other/checkout` compares another version of the app.
 - `score.mjs` matches the items and fees the app found against the real ones.
 
 `--only clean,blur-heavy` and `--per-style 2` on `receipts:run` run a smaller set, and `--name try1` saves

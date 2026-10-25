@@ -8,7 +8,14 @@
   // "2 Fries 13.18" on a paper slip, or a quantity read from a box: "[2] Fries", "2| Fries".
   const BARE_QTY = /^[[(|]?\s*([1-9])\s*[\])|]?\s+([A-Za-z].*)$/;
   const SUBTOTAL = /\bsub[\s-]?total\b/i;
-  const TOTAL = /^\W*\w{0,2}\W*(grand\s+)?tota[l1I|)]|\b(amount|balance)\s+due\b/i;
+  // "8 49 A" at the end of a line, when the reader turned the decimal point into a space and there's no $.
+  // Only trailing tax flags (A, B, *) may follow, so "8 18 PM" isn't read as a price.
+  const END_PRICE = /(?:^|\s)(\d{1,3})\s(\d{2})((?:\s+[A-Za-z*])*)\s*$/;
+  const TOTAL = /^\W*\w{0,2}\W*(grand\s+)?tota[l1I|)](?!\s*(tax|taxes|savings|items|discount)\b)|\b(amount|balance)\s+due\b/i;
+  // "DEEPRVR KTL SW MAUI 509 x": the price column has digits and a tax flag, but the decimal point is gone.
+  const UNREAD_PRICE = /\s\d{3,4}((?:\s+[A-Za-z*])+)\s*$/;
+  // "Total Tax" sums the tax lines above it on grocery receipts.
+  const TOTAL_TAX = /\btota[l1I|)]\s+tax(es)?\b/i;
   const EXTRA = /\b(tax|taxes|tip|gratuity|fee|fees|surcharge|service|delivery|bag)\b/i;
   const DISCOUNT = /\b(discount|promo|promotion|savings|credit|coupon)\b/i;
   // Payment lines only come after the total, so they end the receipt when the total itself was unreadable.
@@ -16,7 +23,10 @@
 
   function lastPrice(line) {
     const found = [...line.matchAll(PRICE)];
-    if (!found.length) return null;
+    if (!found.length) {
+      const end = line.match(END_PRICE);
+      return end ? parseInt(end[1], 10) * 100 + parseInt(end[2], 10) : null;
+    }
     const [, neg, d1, c1, d2, c2, d3, c3] = found[found.length - 1];
     return (parseInt(d1 || d2 || d3, 10) * 100 + parseInt(c1 || c2 || c3, 10)) * (neg ? -1 : 1);
   }
@@ -24,11 +34,14 @@
   function cleanName(text) {
     return text
       .replace(PRICE, "")
+      .replace(END_PRICE, "$3")
+      .replace(/\b\d+\s*@.*$/, "")
       .replace(/[^A-Za-z0-9&'()\-/ ]+/g, " ")
       .replace(/\s+/g, " ")
       .trim()
-      .replace(/^(\W|\b[a-z]{1,2}\b\s)+/, "")
-      .replace(/[\s-]+$/, "")
+      // Stray marks from the edge of a photo in front, tax flags like "A" or "B" behind.
+      .replace(/^(\W|\b[a-z]{1,2}\b\s|\b[A-Z0-9]\s)+/, "")
+      .replace(/(\s+[A-Za-z]\b|[\s-])+$/, "")
       .trim();
   }
 
@@ -79,6 +92,14 @@
     for (const line of lines) {
       const price = lastPrice(line);
       if (SUBTOTAL.test(line)) { subtotal = price; continue; }
+      if (TOTAL_TAX.test(line)) {
+        // Keep the separate taxes when they add up to it; otherwise this one line stands for all of them.
+        const taxes = extras.filter(x => /\btax/i.test(x.name));
+        if (price !== null && taxes.reduce((sum, x) => sum + x.cents, 0) !== price) {
+          extras.splice(0, extras.length, ...extras.filter(x => !taxes.includes(x)), { name: "Tax", cents: price });
+        }
+        continue;
+      }
       if (TOTAL.test(line)) { total = price; break; }
       if (PAYMENT.test(line)) break;
       if (pending && (EXTRA.test(line) || DISCOUNT.test(line))) { items.push(...expand(pending.name, pending.qty, 0)); pending = null; }
@@ -95,6 +116,11 @@
         if (price !== null) { items.push(...expand(pending.name, pending.qty, price)); pending = null; }
         continue;
       }
+      if (price === null && !hasQtyLines && !pending && UNREAD_PRICE.test(line)) {
+        const name = cleanName(line.replace(UNREAD_PRICE, ""));
+        if (name.length > 1) items.push({ name, cents: 0 });
+        continue;
+      }
       if (price === null) continue;
       if (pending) {
         items.push(...expand(pending.name, pending.qty, price));
@@ -104,6 +130,10 @@
         if (name.length > 1) items.push({ name, cents: price });
       }
     }
+    // With one price unreadable and the total known, the missing amount is that price.
+    const unpriced = items.filter(i => !i.cents);
+    const gap = total - [...items, ...extras].reduce((sum, x) => sum + x.cents, 0);
+    if (total !== null && unpriced.length === 1 && gap > 0) Object.assign(unpriced[0], { cents: gap, guessed: true });
     return { items, extras, subtotal, total };
   }
 

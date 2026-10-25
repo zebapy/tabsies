@@ -750,9 +750,12 @@ async function readImage(file) {
   draft.extras = parsed.extras;
   draft.receiptTotal = parsed.total;
   const unpriced = parsed.items.filter(i => !i.cents).length;
+  const guessed = parsed.items.find(i => i.guessed);
   draft.scanned = true;
   draft.found = !parsed.items.length
     ? "Couldn't find items in that image. Add them below."
+    : guessed
+      ? `Found ${parsed.items.length} items. Couldn't read the price of ${guessed.name}, so it's what was left of the total. Check it below.`
     : unpriced
       ? `Found ${parsed.items.length} items, but ${unpriced} need a price. Fill them in below.`
       : `Found ${parsed.items.length} items. Check them below.`;
