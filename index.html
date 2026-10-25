@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tabsies</title>
-<meta name="description" content="Tap what you ordered and pay your share on Venmo.">
+<meta name="description" content="Tap what you ordered and pay your share on Venmo, Cash App or PayPal.">
 <meta property="og:title" content="Split the bill">
-<meta property="og:description" content="Tap what you ordered and pay your share on Venmo.">
+<meta property="og:description" content="Tap what you ordered and pay your share on Venmo, Cash App or PayPal.">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -58,6 +58,8 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .btn { display: block; width: 100%; max-width: 520px; margin: 0 auto; text-align: center; text-decoration: none; font-weight: 700; font-size: 17px; background: var(--accent); color: var(--accent-ink); border: none; border-radius: 999px; padding: 15px; cursor: pointer; }
 .btn[aria-disabled="true"] { background: var(--line); color: var(--muted); pointer-events: none; }
 .btn.ghost { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+.pays { display: flex; gap: 8px; max-width: 520px; margin: 0 auto; }
+.pays .btn { flex: 1; min-width: 0; padding-inline: 8px; }
 
 /* creator view */
 .alt-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -142,14 +144,14 @@ input[type="number"] { font-family: var(--mono); }
     <span>Tax, fees and tip</span><span class="price" id="f-ext"></span>
     <span class="tot">Total</span><span class="price tot" id="f-tot"></span>
   </div>
-  <a class="btn" id="f-pay" target="_blank" rel="noopener" aria-disabled="true">Tap what you ordered</a>
+  <div class="pays" id="f-pays"><span class="btn" id="f-pick" aria-disabled="true">Tap what you ordered</span></div>
 </div>
 
 <main class="wrap" id="create" hidden>
   <header class="hero" data-step="home">
     <h1>Split a receipt</h1>
     <img class="mascot" src="art/receipt.png" alt="" width="360" height="248">
-    <p class="muted" style="margin:0 0 4px">Drop in a receipt, send one link to the group, and everyone taps what they ordered and pays you on Venmo.</p>
+    <p class="muted" style="margin:0 0 4px">Drop in a receipt, send one link to the group, and everyone taps what they ordered and pays you on Venmo, Cash App or PayPal.</p>
   </header>
   <section class="stage" data-step="home" aria-label="Example of what your friends see">
     <div class="phone">
@@ -169,7 +171,7 @@ input[type="number"] { font-family: var(--mono); }
     <li><strong>Friends don't download anything</strong><span class="muted">Text them a link. No app and no sign-up, unlike Splitwise, Tab and the other split apps.</span></li>
     <li><strong>Everyone pays for what they ordered</strong><span class="muted">Friends tap their own items, not an even split like Venmo's.</span></li>
     <li><strong>Tax, fees and tip split fairly</strong><span class="muted">Each person's share is based on how much food they ordered.</span></li>
-    <li><strong>Venmo fills itself in</strong><span class="muted">One tap opens Venmo with the right amount and note.</span></li>
+    <li><strong>Payments fill themselves in</strong><span class="muted">One tap opens Venmo, Cash App or PayPal with the right amount.</span></li>
     <li><strong>Free and private</strong><span class="muted">The receipt is read on your phone, and the order lives in the link. Nothing is stored on a server.</span></li>
   </ul>
   <label class="drop" id="drop" for="file" data-step="home">
@@ -217,7 +219,12 @@ input[type="number"] { font-family: var(--mono); }
       <span class="check" id="check"></span>
     </div>
     <div class="card" id="need">
-      <div class="field" id="venmo-field"><label class="label" for="venmo">Your Venmo</label><input type="text" id="venmo" placeholder="your-username" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+      <div id="handle-fields" style="display:grid;gap:8px">
+        <p class="muted need">How can friends pay you? Fill in any you use.</p>
+        <div class="field"><label class="label" for="h-v">Venmo</label><input type="text" id="h-v" placeholder="@username" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+        <div class="field"><label class="label" for="h-c">Cash App</label><input type="text" id="h-c" placeholder="$cashtag" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+        <div class="field"><label class="label" for="h-p">PayPal</label><input type="text" id="h-p" placeholder="paypal.me/username" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+      </div>
       <p class="muted need" id="need-hint"></p>
     </div>
     <div class="card" id="result" hidden>
@@ -231,7 +238,7 @@ input[type="number"] { font-family: var(--mono); }
         <button class="btn share" id="share" type="button" aria-label="Share link"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></button>
       </div>
       <a class="link-btn" id="preview" target="_blank" rel="noopener">Preview what friends see</a>
-      <button class="link-btn" id="change-venmo" type="button"></button>
+      <button class="link-btn" id="change-handles" type="button"></button>
     </div>
   </section>
   <footer class="tip" data-step="home result">
@@ -256,6 +263,16 @@ function showReferrals() {
   $("refs").hidden = set.length === 0;
 }
 
+// Ways friends can pay you. Each key is the field it's stored under in the link (v predates the others).
+const METHODS = [
+  { key: "v", name: "Venmo", show: h => "@" + h,
+    link: (h, cents, note) => "https://venmo.com/?" + new URLSearchParams({ txn: "pay", audience: "private", recipients: h, amount: (cents / 100).toFixed(2), note }) },
+  { key: "c", name: "Cash App", show: h => "$" + h, link: (h, cents) => `https://cash.app/$${h}/${(cents / 100).toFixed(2)}` },
+  { key: "p", name: "PayPal", show: h => "paypal.me/" + h, link: (h, cents) => `https://paypal.me/${h}/${(cents / 100).toFixed(2)}USD` },
+];
+// Accepts "@name", "$name" or a pasted profile link, and keeps only the characters a username can have.
+const cleanHandle = s => (s || "").trim().replace(/^.*(venmo\.com\/(u\/)?|cash\.app\/|paypal\.me\/)/i, "").replace(/[^A-Za-z0-9_-]/g, "");
+
 // Order data lives entirely in the link: #o=<base64url JSON>, so there's no database.
 function encodeOrder(order) {
   const bytes = new TextEncoder().encode(JSON.stringify(order));
@@ -270,11 +287,18 @@ function decodeOrder(str) {
 
 /* ---------- friend view ---------- */
 function showFriend(order) {
-  // order: { t: title, v: venmo, i: [[name, cents], ...], x: extras cents }
+  // order: { t: title, v: venmo, c: cashtag, p: paypal.me name, i: [[name, cents], ...], x: extras cents }
   $("friend").hidden = false;
   $("f-bar").hidden = false;
   $("f-title").textContent = order.t || "Your share";
-  $("f-to").append("Paying ", Object.assign(document.createElement("strong"), { textContent: "@" + order.v }), " on Venmo");
+  const methods = METHODS.filter(m => cleanHandle(order[m.key]));
+  $("f-to").append("Paying ");
+  methods.forEach((m, k) => {
+    if (k) $("f-to").append(k === methods.length - 1 ? " or " : ", ");
+    $("f-to").append(Object.assign(document.createElement("strong"), { textContent: m.show(cleanHandle(order[m.key])) }), ` on ${m.name}`);
+  });
+  const links = methods.map((m, k) => Object.assign(document.createElement("a"), { className: k ? "btn ghost" : "btn", target: "_blank", rel: "noopener", hidden: true }));
+  $("f-pays").append(...links);
   document.title = order.t ? `${order.t} · Tabsies` : "Tabsies";
   const subtotal = order.i.reduce((s, [, c]) => s + c, 0);
   const picked = new Set();
@@ -299,22 +323,18 @@ function showFriend(order) {
     const food = [...picked].reduce((s, k) => s + order.i[k][1], 0);
     const extra = subtotal ? Math.round(order.x * food / subtotal) : 0;
     const total = food + extra;
-    const pay = $("f-pay");
     $("f-sum").hidden = !picked.size;
     $("f-food").textContent = fmt(food);
     $("f-ext").textContent = fmt(extra);
     $("f-tot").textContent = fmt(total);
-    if (!picked.size) {
-      pay.removeAttribute("href");
-      pay.setAttribute("aria-disabled", "true");
-      pay.textContent = "Tap what you ordered";
-      return;
-    }
+    $("f-pick").hidden = picked.size > 0;
     const note = `${order.t ? order.t + ": " : ""}${[...picked].map(k => order.i[k][0]).join(", ")}`;
-    const q = new URLSearchParams({ txn: "pay", audience: "private", recipients: order.v, amount: (total / 100).toFixed(2), note });
-    pay.href = "https://venmo.com/?" + q.toString();
-    pay.setAttribute("aria-disabled", "false");
-    pay.textContent = `Pay ${fmt(total)} on Venmo`;
+    // With more than one way to pay, the buttons sit side by side and the total shows above them.
+    methods.forEach((m, k) => {
+      links[k].hidden = !picked.size;
+      links[k].href = m.link(cleanHandle(order[m.key]), total, note);
+      links[k].textContent = methods.length > 1 ? m.name : `Pay ${fmt(total)} on ${m.name}`;
+    });
   }
 }
 
@@ -378,10 +398,10 @@ function renderTotals() {
   updateLink();
 }
 
-// The Venmo field only shows on the result page when there's no saved username, or when you tap Change.
-let askVenmo = false;
+// The payment fields only show on the result page when none are saved, or when you tap Change.
+let askHandles = false;
 function showResult() {
-  askVenmo = !$("venmo").value.trim();
+  askHandles = !METHODS.some(m => cleanHandle($("h-" + m.key).value));
   renderEditor();
   setStep("result");
 }
@@ -390,18 +410,19 @@ function showResult() {
 let shareUrl = "";
 function updateLink() {
   const order = {
-    v: $("venmo").value.trim().replace(/^@/, ""),
     i: draft.items.filter(i => i.name.trim() && i.cents > 0).map(i => [i.name.trim(), i.cents]),
     x: draft.extras.reduce((s, x) => s + x.cents, 0),
   };
-  const ready = order.v && order.i.length;
+  const methods = METHODS.filter(m => cleanHandle($("h-" + m.key).value));
+  methods.forEach(m => { order[m.key] = cleanHandle($("h-" + m.key).value); });
+  const ready = methods.length && order.i.length;
   $("result").hidden = !ready;
-  $("need").hidden = ready && !askVenmo;
-  $("venmo-field").hidden = !askVenmo;
+  $("need").hidden = ready && !askHandles;
+  $("handle-fields").hidden = !askHandles;
   $("need-hint").hidden = ready;
-  $("need-hint").textContent = order.v ? "Add at least one item with a price to get the link." : "Add your Venmo username so friends can pay you.";
-  $("change-venmo").hidden = askVenmo;
-  $("change-venmo").textContent = `Friends pay @${order.v} · Change`;
+  $("need-hint").textContent = methods.length ? "Add at least one item with a price to get the link." : "Add at least one way to pay so friends can pay you.";
+  $("change-handles").hidden = askHandles;
+  $("change-handles").textContent = `Friends pay ${methods.map(m => m.show(order[m.key])).join(", ")} · Change`;
   saveDraft();
   shareUrl = ready ? `${location.origin}${HOME}#o=${encodeOrder(order)}` : "";
   $("out").textContent = shareUrl;
@@ -539,16 +560,20 @@ function showCreate() {
   $("add-item").addEventListener("click", () => { draft.items.push({ name: "", cents: 0 }); renderEditor(); });
   $("add-extra").addEventListener("click", () => { draft.extras.push({ name: "", cents: 0 }); renderEditor(); });
 
-  $("change-venmo").addEventListener("click", () => {
-    askVenmo = true;
+  $("change-handles").addEventListener("click", () => {
+    askHandles = true;
     updateLink();
-    $("venmo").focus();
+    $("h-v").focus();
   });
-  // Your Venmo username is remembered on this device only.
-  $("venmo").value = localStorage.getItem("tabsies-venmo") || "";
-  $("venmo").addEventListener("input", () => {
-    localStorage.setItem("tabsies-venmo", $("venmo").value.trim().replace(/^@/, ""));
-    updateLink();
+  // Your usernames are remembered on this device only.
+  const STORE = { v: "tabsies-venmo", c: "tabsies-cashapp", p: "tabsies-paypal" };
+  METHODS.forEach(m => {
+    const input = $("h-" + m.key);
+    input.value = localStorage.getItem(STORE[m.key]) || "";
+    input.addEventListener("input", () => {
+      localStorage.setItem(STORE[m.key], cleanHandle(input.value));
+      updateLink();
+    });
   });
   if (new URLSearchParams(location.search).has("shared")) {
     history.replaceState(null, "", HOME);
@@ -563,7 +588,7 @@ function showCreate() {
     navigator.clipboard.writeText(shareUrl).then(() => { $("copy").textContent = "Copied"; });
   });
   $("share").addEventListener("click", () => {
-    navigator.share({ title: "Split the bill", text: "Tap what you ordered and pay on Venmo", url: shareUrl });
+    navigator.share({ title: "Split the bill", text: "Tap what you ordered and pay me back", url: shareUrl });
   });
   window.addEventListener("popstate", route);
   route();
