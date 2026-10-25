@@ -6,6 +6,11 @@
 
 Split a food order on Venmo, Cash App or PayPal from a receipt screenshot.
 
+<p align="center">
+  <img src="docs/screenshot-home.png" alt="Home screen: drop in a receipt screenshot" width="280">
+  <img src="docs/screenshot-pay.png" alt="Friend view: tap your items and pay on Venmo" width="280">
+</p>
+
 1. Open the site and drop in a receipt screenshot. The text is read in your browser, so nothing is uploaded.
 2. Check the items and fees, add any of your Venmo, Cash App or PayPal usernames, and create a link.
 3. Send the link to the group. Each person taps what they ordered and gets a pay button for each app you added, prefilled with their amount. Venmo also fills in a note with what they ordered; Cash App and PayPal links can't carry a note. Tax, fees and tip are split in proportion to food.
