@@ -59,6 +59,10 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .btn[aria-disabled="true"] { background: var(--line); color: var(--muted); pointer-events: none; }
 .btn.ghost { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
 .pays { display: flex; gap: 8px; max-width: 520px; margin: 0 auto; }
+.fees { margin-top: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 15px; }
+.fees .label, .fees .muted { grid-column: 1 / -1; }
+.fees .muted { font-size: 13px; }
+.fees .price { text-align: right; }
 .pays .btn { flex: 1; min-width: 0; padding-inline: 8px; }
 
 /* creator view */
@@ -155,6 +159,7 @@ input[type="number"] { font-family: var(--mono); }
     <p class="to" id="f-to"></p>
   </header>
   <div id="f-items" style="display:grid;gap:8px"></div>
+  <div class="card fees" id="f-fees" hidden></div>
   <footer class="tip">
     <a href="./">Split your own receipt</a>
     <span class="muted">Made with Tabsies. Drop in a receipt, send one link, and everyone pays for what they ordered. Free, with no app or sign-up.</span>
@@ -310,7 +315,7 @@ function decodeOrder(str) {
 
 /* ---------- friend view ---------- */
 function showFriend(order) {
-  // order: { t: title, v: venmo, c: cashtag, p: paypal.me name, i: [[name, cents], ...], x: extras cents }
+  // order: { t: title, v: venmo, c: cashtag, p: paypal.me name, i: [[name, cents], ...], f: [[fee name, cents], ...], x: all fees in cents }
   $("friend").hidden = false;
   $("f-bar").hidden = false;
   $("f-title").textContent = order.t || "Your share";
@@ -325,6 +330,14 @@ function showFriend(order) {
   document.title = order.t ? `${order.t} · Tabsies` : "Tabsies";
   const subtotal = order.i.reduce((s, [, c]) => s + c, 0);
   const picked = new Set();
+  // Links made before fees were listed one by one only carry their total, x.
+  const fees = order.f || (order.x ? [["All fees", order.x]] : []);
+  const feePrices = fees.map(() => Object.assign(document.createElement("span"), { className: "price" }));
+  $("f-fees").hidden = !fees.length;
+  $("f-fees").append(Object.assign(document.createElement("span"), { className: "label", textContent: "Tax, fees and tip" }));
+  fees.forEach(([name], k) => $("f-fees").append(Object.assign(document.createElement("span"), { textContent: name }), feePrices[k]));
+  const feeNote = Object.assign(document.createElement("span"), { className: "muted" });
+  $("f-fees").append(feeNote);
 
   order.i.forEach(([name, cents], k) => {
     const b = document.createElement("button");
@@ -344,7 +357,11 @@ function showFriend(order) {
 
   function update() {
     const food = [...picked].reduce((s, k) => s + order.i[k][1], 0);
-    const extra = subtotal ? Math.round(order.x * food / subtotal) : 0;
+    // Each fee is split by how much of the food you ordered.
+    const shares = fees.map(([, cents]) => subtotal ? Math.round(cents * food / subtotal) : 0);
+    const extra = shares.reduce((s, c) => s + c, 0);
+    fees.forEach(([, cents], k) => { feePrices[k].textContent = picked.size ? `${fmt(shares[k])} of ${fmt(cents)}` : fmt(cents); });
+    feeNote.textContent = picked.size ? `Your share is ${Math.round(food * 100 / subtotal)}% of each, since you ordered that much of the food.` : "Split by how much of the food each person ordered.";
     const total = food + extra;
     $("f-sum").hidden = !picked.size;
     $("f-food").textContent = fmt(food);
@@ -358,7 +375,7 @@ function showFriend(order) {
       links[k].href = m.link(cleanHandle(order[m.key]), total, note);
       links[k].textContent = methods.length > 1 ? m.name : `Pay ${fmt(total)} on ${m.name}`;
     });
-  }
+  }  update();
 }
 
 /* ---------- creator view ---------- */
@@ -434,6 +451,7 @@ let shareUrl = "";
 function updateLink() {
   const order = {
     i: draft.items.filter(i => i.name.trim() && i.cents > 0).map(i => [i.name.trim(), i.cents]),
+    f: draft.extras.filter(x => x.cents).map(x => [x.name.trim() || "Fee", x.cents]),
     x: draft.extras.reduce((s, x) => s + x.cents, 0),
   };
   const methods = METHODS.filter(m => cleanHandle($("h-" + m.key).value));
