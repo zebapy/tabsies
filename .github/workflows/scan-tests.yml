@@ -8,14 +8,20 @@ on:
     paths: [parse.js, index.html, test/**, package.json, package-lock.json, .github/workflows/scan-tests.yml]
   pull_request:
     paths: [parse.js, index.html, test/**, package.json, package-lock.json, .github/workflows/scan-tests.yml]
+  # Run by hand with "update baseline" ticked to save this run's numbers as the new benchmark.json.
   workflow_dispatch:
+    inputs:
+      update_baseline:
+        description: Save this run's numbers as the new baseline
+        type: boolean
+        default: false
 
 jobs:
   parser:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -25,9 +31,11 @@ jobs:
   benchmark:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -35,8 +43,14 @@ jobs:
       # The fonts the fake receipts are drawn with.
       - run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core fonts-liberation fonts-freefont-ttf fonts-jetbrains-mono
       - run: npx playwright install --with-deps chromium
-      - run: npm run benchmark -- --jobs 4
-      - uses: actions/upload-artifact@v4
+      - run: npm run benchmark -- --jobs 4 ${{ inputs.update_baseline && '--update' || '' }}
+      - if: inputs.update_baseline
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test/receipts/benchmark.json
+          git commit -m "test: update scan benchmark baseline" && git push || echo "Baseline unchanged"
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: scan-benchmark

@@ -1,9 +1,10 @@
 {
   "updated": "2026-10-25",
+  "source": "GitHub Actions run 40235764369 (ubuntu-latest). Local runs differ by a receipt or two because fonts render slightly differently.",
   "results": {
     "blur-heavy": {
       "scans": 12,
-      "prices": 91.1,
+      "prices": 94.6,
       "fees": 86.5,
       "addsUp": 58.3,
       "perfect": 50
@@ -24,22 +25,22 @@
     },
     "crumple": {
       "scans": 12,
-      "prices": 91.1,
+      "prices": 94.6,
       "fees": 97.3,
-      "addsUp": 66.7,
-      "perfect": 66.7
+      "addsUp": 75,
+      "perfect": 75
     },
     "faint-blurry": {
       "scans": 6,
       "prices": 13.6,
-      "fees": 0,
+      "fees": 9.1,
       "addsUp": 0,
       "perfect": 0
     },
     "faint": {
       "scans": 6,
-      "prices": 54.5,
-      "fees": 54.5,
+      "prices": 59.1,
+      "fees": 63.6,
       "addsUp": 0,
       "perfect": 0
     },
@@ -59,31 +60,31 @@
     },
     "motion-blur": {
       "scans": 12,
-      "prices": 51.8,
+      "prices": 53.6,
       "fees": 35.1,
       "addsUp": 0,
       "perfect": 0
     },
     "noise": {
       "scans": 12,
-      "prices": 98.2,
-      "fees": 100,
-      "addsUp": 91.7,
-      "perfect": 91.7
+      "prices": 96.4,
+      "fees": 97.3,
+      "addsUp": 75,
+      "perfect": 75
     },
     "perspective": {
       "scans": 12,
-      "prices": 98.2,
-      "fees": 83.8,
-      "addsUp": 58.3,
-      "perfect": 41.7
+      "prices": 100,
+      "fees": 86.5,
+      "addsUp": 66.7,
+      "perfect": 50
     },
     "phone-photo": {
       "scans": 12,
-      "prices": 50,
-      "fees": 51.4,
-      "addsUp": 16.7,
-      "perfect": 8.3
+      "prices": 48.2,
+      "fees": 48.6,
+      "addsUp": 0,
+      "perfect": 0
     },
     "rotate-10": {
       "scans": 12,
@@ -103,15 +104,15 @@
       "scans": 12,
       "prices": 89.3,
       "fees": 97.3,
-      "addsUp": 66.7,
-      "perfect": 66.7
+      "addsUp": 58.3,
+      "perfect": 58.3
     },
     "smudge": {
       "scans": 12,
-      "prices": 82.1,
-      "fees": 91.9,
-      "addsUp": 66.7,
-      "perfect": 41.7
+      "prices": 80.4,
+      "fees": 89.2,
+      "addsUp": 58.3,
+      "perfect": 33.3
     },
     "real/market-deli.jpg": {
       "scans": 1,
@@ -122,10 +123,10 @@
     },
     "all": {
       "scans": 180,
-      "prices": 86.4,
+      "prices": 86.8,
       "fees": 86.3,
-      "addsUp": 67.8,
-      "perfect": 63.9
+      "addsUp": 65.6,
+      "perfect": 62.2
     }
   }
 }

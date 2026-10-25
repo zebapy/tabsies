@@ -84,6 +84,8 @@ export function summarize(scores) {
   const pct = (n, d) => (d ? Math.round((n * 1000) / d) / 10 : null);
   return {
     scans: scores.length,
+    itemCount: sum("items"),
+    feeCount: sum("fees"),
     prices: pct(sum("itemsPriced"), sum("items")),
     fees: pct(sum("feesRight"), sum("fees")),
     addsUp: pct(sum("addsUp"), scores.length),

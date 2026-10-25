@@ -9,8 +9,10 @@ Nothing here is deployed: the Vercel build only copies the files listed in `verc
 
 `npm run benchmark` draws 12 fake receipts under every condition, reads them and the photos in `real/` with the
 real app (about 4 minutes), and compares with `benchmark.json`. It fails when accuracy drops by more than a
-little noise, or when any real photo gets worse at all. When a change makes scanning better, run
-`npm run benchmark -- --reuse --update` and commit the new `benchmark.json` so later changes are held to it.
+little noise, or when any real photo gets worse at all. The baseline comes from GitHub, since fonts render a
+little differently on other machines and move a receipt or two. When a change makes scanning better, open
+Actions → Scan tests → Run workflow with "update baseline" ticked; it commits the new `benchmark.json` so later
+changes are held to it. (`npm run benchmark -- --reuse --update` does the same locally.)
 
 Both run on GitHub for every push or pull request that touches `parse.js`, `index.html` or `test/`
 (`.github/workflows/scan-tests.yml`); the benchmark table shows on the run's summary page.

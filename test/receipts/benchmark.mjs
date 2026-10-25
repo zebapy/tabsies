@@ -17,11 +17,16 @@ const REAL = join(HERE, "real");
 const argv = process.argv;
 const JOBS = Number(argv[argv.indexOf("--jobs") + 1]) || 3;
 
-// How far a number may drop before the run fails, in percentage points. Per condition there are only
-// 12 receipts, so one receipt flipping moves "adds up" by about 8 points; the totals over all scans are steadier.
-const ALLOWED_DROP = {
-  condition: { prices: 5, fees: 8, addsUp: 17, perfect: 17 },
-  all: { prices: 2, fees: 3, addsUp: 5, perfect: 5 },
+// How far a number may drop before the run fails, in percentage points. A single condition is a small set, so
+// there it may also lose up to two items, fees or receipts, which on 12 receipts is a lot of points.
+// The totals over all scans are steadier and held tighter.
+const ALLOWED_DROP = { prices: 5, fees: 8, addsUp: 0, perfect: 0 };
+const ALLOWED_DROP_ALL = { prices: 2, fees: 3, addsUp: 5, perfect: 5 };
+const COUNT = { prices: "itemCount", fees: "feeCount", addsUp: "scans", perfect: "scans" };
+const allowedDrop = (key, metric, set) => {
+  if (key.startsWith("real/")) return 0;
+  if (key === "all") return ALLOWED_DROP_ALL[metric];
+  return Math.max(ALLOWED_DROP[metric], (2 * 100) / set[COUNT[metric]]);
 };
 
 if (!argv.includes("--reuse") || !existsSync(join(OUT, "manifest.json"))) await generate({ out: OUT, perStyle: 2, jobs: JOBS });
@@ -62,8 +67,7 @@ const cell = (key, metric) => {
   if (was === undefined || was === null) return `${now}% (new)`;
   const diff = Math.round((now - was) * 10) / 10;
   // Real photos have to stay exactly as good; generated sets get some slack for noise.
-  const allowed = key.startsWith("real/") ? 0 : ALLOWED_DROP[key === "all" ? "all" : "condition"][metric];
-  if (-diff > allowed) failures.push(`${key} ${metric}: ${was}% → ${now}%`);
+  if (-diff > allowedDrop(key, metric, results[key]) + 0.05) failures.push(`${key} ${metric}: ${was}% → ${now}%`);
   return diff === 0 ? `${now}%` : `${now}% (${diff > 0 ? "+" : ""}${diff})`;
 };
 const rows = [...keys, "all"].map(k => `| ${k} | ${results[k].scans} | ${cell(k, "prices")} | ${cell(k, "fees")} | ${cell(k, "addsUp")} | ${cell(k, "perfect")} |`);
@@ -82,7 +86,9 @@ console.log(`\n${table}`);
 if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${table}\n`);
 
 if (argv.includes("--update")) {
-  writeFileSync(BASELINE, JSON.stringify({ updated: new Date().toISOString().slice(0, 10), results }, null, 2) + "\n");
+  // The baseline should come from GitHub, where the workflow runs; fonts render a little differently elsewhere.
+  const source = process.env.GITHUB_RUN_ID ? `GitHub Actions run ${process.env.GITHUB_RUN_ID}` : "a local run";
+  writeFileSync(BASELINE, JSON.stringify({ updated: new Date().toISOString().slice(0, 10), source, results }, null, 2) + "\n");
   console.log(`\nSaved as the new baseline in ${BASELINE}`);
 } else if (failures.length) {
   console.log(`\nScanning got worse. If that's expected, rerun with --update to accept the new numbers.`);
