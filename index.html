@@ -501,16 +501,232 @@ function loadTesseract() {
 }
 
 // Phone screenshots are narrow; enlarging them first helps the text reader keep decimal points.
-async function enlarge(file) {
+// Photos also get their lighting evened out (shadows, faded ink) and are turned level before reading.
+async function prepare(file) {
   const img = await createImageBitmap(file);
   const scale = Math.max(1, 1600 / img.width);
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(img.width * scale);
-  canvas.height = Math.round(img.height * scale);
-  const ctx = canvas.getContext("2d");
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  const canvas = Object.assign(document.createElement("canvas"), { width: w, height: h });
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  return canvas;
+  ctx.drawImage(img, 0, 0, w, h);
+  const pixels = ctx.getImageData(0, 0, w, h);
+  const gray = evenLight(grayscale(pixels.data, w, h), w, h);
+  for (let k = 0; k < gray.length; k++) pixels.data[k * 4] = pixels.data[k * 4 + 1] = pixels.data[k * 4 + 2] = gray[k];
+  ctx.putImageData(pixels, 0, 0);
+  return level(canvas, slant(gray, w, h));
+}
+
+// Light text on a dark background (dark mode) is flipped, so text is always the dark part.
+// Each patch with some contrast votes: if most of it sits near its darkest shade, its text is the light part.
+function grayscale(rgba, w, h) {
+  const gray = new Uint8ClampedArray(rgba.length / 4);
+  for (let k = 0; k < gray.length; k++) gray[k] = rgba[k * 4] * 0.3 + rgba[k * 4 + 1] * 0.59 + rgba[k * 4 + 2] * 0.11;
+  const size = Math.max(16, Math.round(w / 25));
+  let votes = 0;
+  for (let by = 0; by + size <= h; by += size) {
+    for (let bx = 0; bx + size <= w; bx += size) {
+      const hist = new Uint32Array(256);
+      for (let y = by; y < by + size; y += 2) for (let x = bx; x < bx + size; x += 2) hist[gray[y * w + x]]++;
+      const n = (size / 2) ** 2;
+      const at = share => { let seen = 0; let v = 0; while (v < 255 && (seen += hist[v]) < n * share) v++; return v; };
+      const lo = at(0.02);
+      const mid = at(0.5);
+      const hi = at(0.98);
+      if (hi - lo > 60) votes += mid - lo < hi - mid ? -1 : 1;
+    }
+  }
+  if (votes < 0) for (let k = 0; k < gray.length; k++) gray[k] = 255 - gray[k];
+  return gray;
+}
+
+// Divide each pixel by how bright the paper around it is, so a shadow or a dim corner reads like the rest,
+// and stretch faded ink in each area so it comes out dark.
+function evenLight(gray, w, h) {
+  const size = Math.max(16, Math.round(w / 25));
+  const gw = Math.ceil(w / size);
+  const gh = Math.ceil(h / size);
+  const paper = new Float32Array(gw * gh);
+  const ink = new Float32Array(gw * gh);
+  const grain = new Float32Array(gw * gh);
+  for (let by = 0; by < gh; by++) {
+    for (let bx = 0; bx < gw; bx++) {
+      const hist = new Uint32Array(256);
+      let n = 0;
+      for (let y = by * size; y < Math.min(h, (by + 1) * size); y += 2) {
+        for (let x = bx * size; x < Math.min(w, (bx + 1) * size); x += 2) { hist[gray[y * w + x]]++; n++; }
+      }
+      // The paper is the brightest part of the block and the ink the darkest, give or take a few specks of noise.
+      let seen = 0;
+      let hi = 255;
+      while (hi > 0 && (seen += hist[hi]) < n * 0.1) hi--;
+      seen = 0;
+      let mid = 255;
+      while (mid > 0 && (seen += hist[mid]) < n * 0.5) mid--;
+      seen = 0;
+      let lo = 0;
+      while (lo < 255 && (seen += hist[lo]) < n * 0.03) lo++;
+      paper[by * gw + bx] = Math.max(hi, 1);
+      ink[by * gw + bx] = lo / Math.max(hi, 1);
+      grain[by * gw + bx] = (hi - mid) / Math.max(hi, 1);
+    }
+  }
+  // How grainy the photo is: on blank paper the middle and the brightest pixels differ only by noise.
+  const noise = [...grain].sort((a, b) => a - b)[grain.length >> 1];
+  // Faded ink gets stretched to black, but less so on a grainy photo, where stretching turns noise into specks.
+  const most = Math.max(0, Math.min(0.8, 0.8 - noise * 10));
+  for (let k = 0; k < ink.length; k++) ink[k] = Math.min(ink[k], most);
+  // Smoothing only mixes blocks of the receipt, so the dark table doesn't wash out text along its edge.
+  const area = receiptArea(paper, gw, gh);
+  const smoothPaper = smooth(paper, gw, gh, area);
+  const smoothInk = smooth(ink, gw, gh, area);
+  if (noise > 0.03) gray = soften(gray, w, h);
+  const out = new Uint8ClampedArray(w * h);
+  for (let y = 0; y < h; y++) {
+    const gy = Math.min(gh - 1, Math.max(0, (y + 0.5) / size - 0.5));
+    const y0 = Math.floor(gy);
+    const y1 = Math.min(gh - 1, y0 + 1);
+    const fy = gy - y0;
+    for (let x = 0; x < w; x++) {
+      const gx = Math.min(gw - 1, Math.max(0, (x + 0.5) / size - 0.5));
+      const x0 = Math.floor(gx);
+      const x1 = Math.min(gw - 1, x0 + 1);
+      const fx = gx - x0;
+      const at = grid => (grid[y0 * gw + x0] * (1 - fx) + grid[y0 * gw + x1] * fx) * (1 - fy) + (grid[y1 * gw + x0] * (1 - fx) + grid[y1 * gw + x1] * fx) * fy;
+      const lo = at(smoothInk);
+      out[y * w + x] = area[Math.floor(y / size) * gw + Math.floor(x / size)]
+        ? ((gray[y * w + x] / at(smoothPaper) - lo) / (0.92 - lo)) * 255
+        : 255;
+    }
+  }
+  return out;
+}
+
+// The blocks that make up the receipt: grow out from the brightest block while the paper changes gradually.
+// A shadow fades in slowly and stays in; the jump from paper to the table behind it doesn't, and the table is blanked.
+function receiptArea(paper, gw, gh) {
+  const area = new Uint8Array(paper.length);
+  let start = 0;
+  paper.forEach((v, k) => { if (v > paper[start]) start = k; });
+  const queue = [start];
+  area[start] = 1;
+  while (queue.length) {
+    const k = queue.pop();
+    const bx = k % gw;
+    const by = (k - bx) / gw;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const x = bx + dx;
+      const y = by + dy;
+      const n = y * gw + x;
+      if (x >= 0 && x < gw && y >= 0 && y < gh && !area[n] && paper[n] >= paper[k] * 0.72) { area[n] = 1; queue.push(n); }
+    }
+  }
+  return area;
+}
+
+// A 3x3 average, to calm sensor noise before the contrast is stretched.
+function soften(gray, w, h) {
+  const out = new Uint8ClampedArray(gray.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let s = 0;
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const yy = y + dy;
+        const xx = x + dx;
+        if (yy >= 0 && yy < h && xx >= 0 && xx < w) { s += gray[yy * w + xx]; n++; }
+      }
+      out[y * w + x] = s / n;
+    }
+  }
+  return out;
+}
+
+// Average each cell with its neighbours, twice, so the lighting estimate changes gradually across the image.
+function smooth(grid, gw, gh, area) {
+  for (let pass = 0; pass < 2; pass++) {
+    const next = new Float32Array(grid.length);
+    for (let by = 0; by < gh; by++) {
+      for (let bx = 0; bx < gw; bx++) {
+        let s = 0;
+        let n = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const y = by + dy;
+          const x = bx + dx;
+          if (y >= 0 && y < gh && x >= 0 && x < gw && area[y * gw + x] === area[by * gw + bx]) { s += grid[y * gw + x]; n++; }
+        }
+        next[by * gw + bx] = s / n;
+      }
+    }
+    grid = next;
+  }
+  return grid;
+}
+
+// How far the lines of text lean, in degrees: the angle at which dark cells stack into the sharpest rows.
+// Cells are averaged so scattered noise doesn't count, and only dark cells with paper beside them count as text,
+// so a dark table around the receipt doesn't.
+function slant(gray, w, h) {
+  const step = Math.max(1, Math.round(w / 500));
+  const cw = Math.floor(w / step);
+  const ch = Math.floor(h / step);
+  const cells = new Float32Array(cw * ch);
+  for (let cy = 0; cy < ch; cy++) {
+    for (let cx = 0; cx < cw; cx++) {
+      let s = 0;
+      for (let dy = 0; dy < step; dy++) for (let dx = 0; dx < step; dx++) s += gray[(cy * step + dy) * w + cx * step + dx];
+      cells[cy * cw + cx] = s / (step * step);
+    }
+  }
+  const xs = [];
+  const ys = [];
+  for (let cy = 0; cy < ch; cy++) {
+    for (let cx = 3; cx < cw - 3; cx++) {
+      const k = cy * cw + cx;
+      if (cells[k] < 150 && (cells[k - 3] > 200 || cells[k + 3] > 200)) { xs.push(cx); ys.push(cy); }
+    }
+  }
+  if (xs.length < 200) return 0;
+  const rows = Math.ceil(Math.hypot(w, h) / step) * 2 + 2;
+  const sharpness = deg => {
+    const a = (deg * Math.PI) / 180;
+    const sin = Math.sin(a);
+    const cos = Math.cos(a);
+    const hist = new Uint32Array(rows);
+    for (let k = 0; k < xs.length; k++) hist[Math.round(ys[k] * cos - xs[k] * sin) + (rows >> 1)]++;
+    let s = 0;
+    for (let k = 0; k < rows; k++) s += hist[k] * hist[k];
+    return s;
+  };
+  let best = 0;
+  let bestScore = sharpness(0);
+  const search = (from, to, by) => {
+    for (let deg = from; deg <= to + 1e-9; deg += by) {
+      const s = sharpness(deg);
+      if (s > bestScore) { best = deg; bestScore = s; }
+    }
+  };
+  search(-15, 15, 0.5);
+  search(best - 0.5, best + 0.5, 0.1);
+  return best;
+}
+
+// Turn the image so the text runs level. Small leans are left alone; the reader copes with those.
+function level(canvas, deg) {
+  if (Math.abs(deg) < 0.8) return canvas;
+  const a = (-deg * Math.PI) / 180;
+  const w = Math.ceil(Math.abs(canvas.width * Math.cos(a)) + Math.abs(canvas.height * Math.sin(a)));
+  const h = Math.ceil(Math.abs(canvas.width * Math.sin(a)) + Math.abs(canvas.height * Math.cos(a)));
+  const out = Object.assign(document.createElement("canvas"), { width: w, height: h });
+  const ctx = out.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(a);
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+  return out;
 }
 
 function showProgress(text, fraction) {
@@ -527,7 +743,7 @@ async function readImage(file) {
   const worker = await Tesseract.createWorker("eng", 1, {
     logger: m => { if (m.status === "recognizing text") showProgress(`Reading items… ${Math.round(m.progress * 100)}%`, 0.1 + m.progress * 0.9); },
   });
-  const { data } = await worker.recognize(await enlarge(file));
+  const { data } = await worker.recognize(await prepare(file));
   await worker.terminate();
   const parsed = parseReceipt(data.text);
   draft.items = parsed.items;

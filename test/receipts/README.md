@@ -12,11 +12,13 @@ npm run receipts:run -- --jobs 3             # reads them with index.html + pars
 - `receipts.mjs` makes each receipt (items, fees, total) from a seed and draws it as a delivery app screenshot,
   an email or a paper slip. The same seed always gives the same receipt.
 - `generate.mjs` saves a clean image plus one per condition: low resolution, blur, noise, JPEG, rotation,
-  perspective, shadow, crumpled paper and a mix of all of them that looks like a phone photo.
+  perspective, shadow, crumpled paper, faded ink, smudges, motion blur and a mix that looks like a phone photo.
+- `conditions.mjs` lists those conditions.
 - `run.mjs` serves the repo, opens `index.html` in headless Chromium and calls the app's own `readImage`,
   so images go through the same enlarging, text reader and `parse.js` a real upload does.
   The text reader is served from `node_modules` instead of the CDN.
 - `score.mjs` matches the items and fees the app found against the real ones.
 
-`--only clean,blur-heavy` on `receipts:run` limits it to some conditions. `out/results.json` keeps the raw text
+`--only clean,blur-heavy` and `--per-style 2` on `receipts:run` run a smaller set, and `--name try1` saves
+the results next to earlier runs instead of replacing them. `out/results.json` keeps the raw text
 the reader saw for every image, which is the place to look when a receipt comes back wrong.

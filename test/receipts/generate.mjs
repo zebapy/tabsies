@@ -5,6 +5,7 @@ import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { STYLES, makeReceipt, receiptHtml, receiptText } from "./receipts.mjs";
+import { CONDITIONS, applies } from "./conditions.mjs";
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "out");
 const arg = (name, fallback) => {
@@ -13,23 +14,6 @@ const arg = (name, fallback) => {
 };
 const PER_STYLE = arg("per-style", 6);
 const SEED = arg("seed", 1);
-
-// Sizes are in pixels for an 800px wide image and scale with the real width.
-// bg puts the receipt on a table, the way a phone photo of it would look.
-export const CONDITIONS = {
-  "clean": {},
-  "low-res": { downscale: 0.35 },
-  "blur-light": { blur: 1.2 },
-  "blur-heavy": { blur: 2.6 },
-  "noise": { noise: 30 },
-  "jpeg": { jpeg: 0.1 },
-  "rotate-3": { bg: true, rotate: 3 },
-  "rotate-10": { bg: true, rotate: 10 },
-  "perspective": { bg: true, tiltX: 22, tiltY: -14, rotate: 2 },
-  "shadow": { bg: true, shadow: true },
-  "crumple": { bg: true, crumple: true },
-  "phone-photo": { bg: true, rotate: -4, tiltX: 14, tiltY: 6, shadow: true, crumple: true, blur: 0.8, noise: 14, jpeg: 0.55, downscale: 0.7 },
-};
 
 function stageHtml(src, w, h, c, seed) {
   const s = w / 800;
@@ -43,7 +27,7 @@ function stageHtml(src, w, h, c, seed) {
     c.tiltY ? `rotateY(${c.tiltY}deg)` : "",
     c.rotate ? `rotate(${c.rotate}deg)` : "",
   ].join(" ");
-  const filter = [c.crumple ? "url(#crumple)" : "", c.blur ? `blur(${(c.blur * s).toFixed(2)}px)` : ""].join(" ").trim() || "none";
+  const filter = [c.fade ? "url(#fade)" : "", c.smudge ? "url(#smudge)" : "", c.motion ? "url(#motion)" : "", c.crumple ? "url(#crumple)" : "", c.blur ? `blur(${(c.blur * s).toFixed(2)}px)` : ""].join(" ").trim() || "none";
   const shadowAngle = 30 + (seed % 5) * 25;
   return `<!doctype html><body style="margin:0">
     <svg width="0" height="0" style="position:absolute"><filter id="crumple" x="0" y="0" width="100%" height="100%">
@@ -52,6 +36,25 @@ function stageHtml(src, w, h, c, seed) {
       <feDiffuseLighting in="n" surfaceScale="${(4 * s).toFixed(1)}" lighting-color="#fff" result="light"><feDistantLight azimuth="235" elevation="50"/></feDiffuseLighting>
       <feComposite in="light" in2="d" operator="arithmetic" k1="0.6" k2="0" k3="0.55" k4="0" result="lit"/>
       <feComposite in="lit" in2="d" operator="in"/>
+    </filter>
+    <filter id="fade" x="0" y="0" width="100%" height="100%">
+      <feComponentTransfer in="SourceGraphic" result="faded"><feFuncR type="linear" slope="0.45" intercept="0.55"/><feFuncG type="linear" slope="0.45" intercept="0.55"/><feFuncB type="linear" slope="0.42" intercept="0.56"/></feComponentTransfer>
+      <feComponentTransfer in="SourceGraphic" result="gone"><feFuncR type="linear" slope="0.25" intercept="0.75"/><feFuncG type="linear" slope="0.25" intercept="0.75"/><feFuncB type="linear" slope="0.25" intercept="0.75"/></feComponentTransfer>
+      <feTurbulence type="fractalNoise" baseFrequency="${(0.003 / s).toFixed(4)}" numOctaves="2" seed="${seed + 7}" result="t"/>
+      <feColorMatrix in="t" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  7 0 0 0 -3.6" result="mask"/>
+      <feComposite in="gone" in2="mask" operator="in" result="patches"/>
+      <feMerge><feMergeNode in="faded"/><feMergeNode in="patches"/></feMerge>
+    </filter>
+    <filter id="smudge" x="0" y="0" width="100%" height="100%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="${(7 * s).toFixed(1)} ${(1.5 * s).toFixed(1)}" result="smear"/>
+      <feColorMatrix in="smear" type="matrix" values="0.85 0 0 0 0  0 0.85 0 0 0  0 0 0.87 0 0  0 0 0 1 0" result="dirty"/>
+      <feTurbulence type="fractalNoise" baseFrequency="${(0.004 / s).toFixed(4)}" numOctaves="2" seed="${seed + 3}" result="t"/>
+      <feColorMatrix in="t" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  6 0 0 0 -3.3" result="mask"/>
+      <feComposite in="dirty" in2="mask" operator="in" result="patches"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="patches"/></feMerge>
+    </filter>
+    <filter id="motion" x="0" y="0" width="100%" height="100%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="${((c.motion || 0) * s).toFixed(1)} ${(0.3 * s).toFixed(1)}"/>
     </filter></svg>
     <div id="stage" style="position:relative;overflow:hidden;width:${sw}px;height:${sh}px;background:${c.bg ? "radial-gradient(circle at 30% 20%, #8a7560, #4d3f31)" : "#fff"}">
       <img src="${src}" style="position:absolute;left:${(sw - w) / 2}px;top:${(sh - h) / 2}px;width:${w}px;height:${h}px;transform:${transform || "none"};filter:${filter};box-shadow:${c.bg ? "0 6px 18px rgba(0,0,0,.45)" : "none"}">
@@ -106,6 +109,7 @@ async function main() {
     })();
 
     for (const [name, c] of Object.entries(CONDITIONS)) {
+      if (!applies(name, rc.style)) continue;
       const page = await browser.newPage({ viewport: { width: 400, height: 400 } });
       await page.setContent(stageHtml("data:image/png;base64," + clean.toString("base64"), size[0], size[1], c, rc.seed));
       await page.waitForFunction(() => document.querySelector("#stage img").complete);

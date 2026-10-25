@@ -1,6 +1,6 @@
 // Feeds every generated receipt image through the real app (index.html in a headless browser,
 // same text reader and parse.js) and scores what comes back.
-// Usage: node test/receipts/run.mjs [--jobs 3] [--only clean,blur-heavy]
+// Usage: node test/receipts/run.mjs [--jobs 3] [--only clean,blur-heavy] [--per-style 2] [--name try1]
 import { chromium } from "playwright";
 import { createServer } from "node:http";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -8,6 +8,7 @@ import { join, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { score } from "./score.mjs";
+import { applies } from "./conditions.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..", "..");
@@ -19,6 +20,8 @@ const argv = process.argv;
 const opt = name => { const k = argv.indexOf(`--${name}`); return k > 0 ? argv[k + 1] : null; };
 const JOBS = Number(opt("jobs") || 3);
 const ONLY = opt("only") ? opt("only").split(",") : null;
+const PER_STYLE = opt("per-style") ? Number(opt("per-style")) : Infinity;
+const NAME = opt("name") ? `-${opt("name")}` : "";
 
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".png": "image/png", ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml" };
 function serve() {
@@ -41,7 +44,7 @@ function localCdn(url) {
 }
 
 async function main() {
-  const manifest = JSON.parse(readFileSync(join(OUT, "manifest.json"), "utf8")).filter(m => !ONLY || ONLY.includes(m.condition));
+  const manifest = JSON.parse(readFileSync(join(OUT, "manifest.json"), "utf8")).filter(m => (!ONLY || ONLY.includes(m.condition)) && Number(m.id.slice(-2)) < PER_STYLE && applies(m.condition, m.style));
   const truths = {};
   for (const m of manifest) truths[m.id] ||= JSON.parse(readFileSync(join(OUT, "truth", `${m.id}.json`), "utf8"));
 
@@ -86,9 +89,9 @@ async function main() {
 
   // What parse.js does with a perfect reading, to separate parser misses from reader misses.
   const oracle = Object.values(truths).map(t => ({ id: t.id, style: t.style, condition: "perfect-text", score: score(t, parseReceipt(t.text)) }));
-  writeFileSync(join(OUT, "results.json"), JSON.stringify({ results, oracle }, null, 2));
-  writeFileSync(join(OUT, "REPORT.md"), report(results, oracle));
-  console.log(`done in ${Math.round((Date.now() - started) / 1000)}s, see ${join(OUT, "REPORT.md")}`);
+  writeFileSync(join(OUT, `results${NAME}.json`), JSON.stringify({ results, oracle }, null, 2));
+  writeFileSync(join(OUT, `REPORT${NAME}.md`), report(results, oracle));
+  console.log(`done in ${Math.round((Date.now() - started) / 1000)}s, see ${join(OUT, `REPORT${NAME}.md`)}`);
 }
 
 const pct = (n, d) => (d ? `${Math.round((n * 100) / d)}%` : "–");
