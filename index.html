@@ -129,6 +129,7 @@ input[type="number"] { font-family: var(--mono); }
 .r-head { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; }
 .r-head h1 { margin: 0; }
 .r-head .muted { grid-column: 1 / -1; margin: 0; }
+.scan-note { margin: 0; font-size: 13px; }
 .need { margin: 0; }
 .split .share { width: 64px; flex: none; display: grid; place-items: center; border-radius: 6px 999px 999px 6px; padding: 0; }
 
@@ -191,6 +192,7 @@ input[type="number"] { font-family: var(--mono); }
     <label class="btn ghost camera-btn" for="camera"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo</label>
     <button class="link-btn" id="manual" type="button">Type it in instead</button>
   </div>
+  <p class="muted scan-note" data-step="home">Scanning uses plain text recognition on your phone, not AI, and can get things wrong. You'll check every line before sending.</p>
   <hr class="divider" data-step="home">
   <section class="stage" data-step="home" aria-label="Example of what your friends see">
     <div class="phone">
@@ -226,6 +228,7 @@ input[type="number"] { font-family: var(--mono); }
     <h1>Check your receipt</h1>
     <button class="link-btn" id="restart" type="button">Start over</button>
     <p class="muted" id="found"></p>
+    <p class="muted scan-note" id="scan-note">Scanning can misread prices or names, so check each line. It's plain text recognition on your phone, not AI.</p>
   </header>
   <section id="editor" data-step="result" style="display:grid;gap:12px">
     <div class="card">
@@ -400,6 +403,7 @@ function route() {
   }
   Object.assign(draft, JSON.parse(stored));
   $("found").textContent = draft.found;
+  $("scan-note").hidden = !draft.scanned;
   showResult();
 }
 
@@ -530,6 +534,7 @@ async function readImage(file) {
   draft.extras = parsed.extras;
   draft.receiptTotal = parsed.total;
   const unpriced = parsed.items.filter(i => !i.cents).length;
+  draft.scanned = true;
   draft.found = !parsed.items.length
     ? "Couldn't find items in that image. Add them below."
     : unpriced
@@ -588,7 +593,7 @@ function showCreate() {
     if (f) read(f);
   });
   $("manual").addEventListener("click", () => {
-    Object.assign(draft, { items: [{ name: "", cents: 0 }], extras: [], receiptTotal: null, found: "Add each item and its price, then the tax, fees and tip." });
+    Object.assign(draft, { items: [{ name: "", cents: 0 }], extras: [], receiptTotal: null, scanned: false, found: "Add each item and its price, then the tax, fees and tip." });
     goCheck();
   });
   $("restart").addEventListener("click", () => {
