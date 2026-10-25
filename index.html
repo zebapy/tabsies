@@ -173,7 +173,7 @@ input[type="number"] { font-family: var(--mono); }
     <span>Tax, fees and tip</span><span class="price" id="f-ext"></span>
     <span class="tot">Total</span><span class="price tot" id="f-tot"></span>
   </div>
-  <div class="pays" id="f-pays"><span class="btn" id="f-pick" aria-disabled="true">Tap what you ordered</span></div>
+  <div class="pays" id="f-pays"><span class="btn" id="f-pick" aria-disabled="true">Choose what you got</span></div>
 </div>
 
 <main class="wrap" id="create" hidden>
@@ -200,7 +200,7 @@ input[type="number"] { font-family: var(--mono); }
       <div class="screen">
         <div class="notch"></div>
         <strong class="demo-title">Burger night</strong>
-        <span class="demo-to">Paying <b>@your-name</b> on Venmo</span>
+        <span class="demo-to">Choose what you got, then pay <b>@your-name</b> back on Venmo</span>
         <div class="demo-items" id="demo-items"></div>
         <div class="demo-sum"><span>Food</span><span class="price" id="demo-food"></span><span>Tax, fees and tip</span><span class="price" id="demo-ext"></span></div>
         <div class="btn demo-pay" id="demo-pay"></div>
@@ -323,10 +323,10 @@ function showFriend(order) {
   $("f-bar").hidden = false;
   $("f-title").textContent = order.t || "Your share";
   const methods = METHODS.filter(m => cleanHandle(order[m.key]));
-  $("f-to").append("Paying ");
+  $("f-to").append("Choose what you got, then pay ");
   methods.forEach((m, k) => {
     if (k) $("f-to").append(k === methods.length - 1 ? " or " : ", ");
-    $("f-to").append(Object.assign(document.createElement("strong"), { textContent: m.show(cleanHandle(order[m.key])) }), ` on ${m.name}`);
+    $("f-to").append(Object.assign(document.createElement("strong"), { textContent: m.show(cleanHandle(order[m.key])) }), `${k ? "" : " back"} on ${m.name}`);
   });
   const links = methods.map((m, k) => Object.assign(document.createElement("a"), { className: k ? "btn ghost" : "btn", target: "_blank", rel: "noopener", hidden: true }));
   $("f-pays").append(...links);
@@ -553,7 +553,7 @@ function renderDemo() {
     const extra = Math.round(extras * food / subtotal);
     $("demo-food").textContent = fmt(food);
     $("demo-ext").textContent = fmt(extra);
-    $("demo-pay").textContent = food ? `Pay ${fmt(food + extra)} on Venmo` : "Tap what you ordered";
+    $("demo-pay").textContent = food ? `Pay ${fmt(food + extra)} on Venmo` : "Choose what you got";
     $("demo-pay").setAttribute("aria-disabled", String(!food));
   };
   $("demo-items").replaceChildren(...sample.map(entry => {
