@@ -65,6 +65,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .tip { display: grid; justify-items: center; gap: 4px; text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
 .tip a { color: var(--accent); font-weight: 700; text-decoration: none; border: 1.5px solid var(--accent); border-radius: 999px; padding: 8px 16px; }
 .tip .muted { font-size: 13px; }
+.tip .refs a { border: none; padding: 0; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 .mascot { display: block; height: auto; pointer-events: none; user-select: none; }
 .hero { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px; }
 .hero .mascot { width: 116px; grid-row: span 2; margin-right: -6px; }
@@ -236,6 +237,7 @@ input[type="number"] { font-family: var(--mono); }
   <footer class="tip" data-step="home result">
     <a href="https://venmo.com/?txn=pay&amp;audience=private&amp;recipients=zebpykosz&amp;amount=2.00&amp;note=%F0%9F%A5%90%20Croissant%20for%20the%20Tabsies%20maker" target="_blank" rel="noopener">🥐 Buy me a croissant</a>
     <span class="muted">Tabsies is free. If it saved you some math, a croissant is appreciated.</span>
+    <span class="muted refs" id="refs" hidden>Friend not on Venmo yet? Send them my invite for <a id="ref-venmo" target="_blank" rel="noopener" hidden>Venmo</a><span id="ref-or" hidden> or </span><a id="ref-cashapp" target="_blank" rel="noopener" hidden>Cash App</a>.</span>
   </footer>
 </main>
 
@@ -244,6 +246,15 @@ input[type="number"] { font-family: var(--mono); }
 const $ = id => document.getElementById(id);
 const fmt = c => "$" + (c / 100).toFixed(2);
 const toCents = v => Math.round((parseFloat(v) || 0) * 100);
+
+// Zeb's personal invite links; a link stays hidden until it's filled in.
+const REFERRALS = { venmo: "", cashapp: "" };
+function showReferrals() {
+  const set = Object.keys(REFERRALS).filter(k => REFERRALS[k]);
+  set.forEach(k => { $("ref-" + k).href = REFERRALS[k]; $("ref-" + k).hidden = false; });
+  $("ref-or").hidden = set.length < 2;
+  $("refs").hidden = set.length === 0;
+}
 
 // Order data lives entirely in the link: #o=<base64url JSON>, so there's no database.
 function encodeOrder(order) {
@@ -534,6 +545,7 @@ function showCreate() {
   });
 }
 
+showReferrals();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 
 const match = location.hash.match(/^#o=([A-Za-z0-9_-]+)$/);
