@@ -3,5 +3,6 @@
   "framework": null,
   "installCommand": "",
   "buildCommand": "mkdir -p public && cp -r index.html parse.js sw.js manifest.webmanifest icons art public/",
-  "outputDirectory": "public"
+  "outputDirectory": "public",
+  "rewrites": [{ "source": "/check", "destination": "/index.html" }]
 }

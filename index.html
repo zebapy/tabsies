@@ -319,7 +319,29 @@ function showFriend(order) {
 }
 
 /* ---------- creator view ---------- */
-const draft = { items: [], extras: [], receiptTotal: null };
+const draft = { items: [], extras: [], receiptTotal: null, found: "" };
+
+// Checking a receipt is its own page at /check (Vercel serves index.html there), so the back button and
+// refresh work. The draft rides along in sessionStorage, so it lasts for this tab only.
+const HOME = new URL("./", location.href).pathname;
+const CHECK = HOME + "check";
+function saveDraft() { sessionStorage.setItem("tabsies-draft", JSON.stringify(draft)); }
+function goCheck() {
+  saveDraft();
+  history.pushState(null, "", CHECK);
+  route();
+}
+function route() {
+  const stored = sessionStorage.getItem("tabsies-draft");
+  if (location.pathname !== CHECK || !stored) {
+    if (location.pathname !== HOME) history.replaceState(null, "", HOME);
+    setStep("home");
+    return;
+  }
+  Object.assign(draft, JSON.parse(stored));
+  $("found").textContent = draft.found;
+  showResult();
+}
 
 function rowFor(list, entry, onChange) {
   const row = document.createElement("div");
@@ -380,7 +402,8 @@ function updateLink() {
   $("need-hint").textContent = order.v ? "Add at least one item with a price to get the link." : "Add your Venmo username so friends can pay you.";
   $("change-venmo").hidden = askVenmo;
   $("change-venmo").textContent = `Friends pay @${order.v} · Change`;
-  shareUrl = ready ? `${location.origin}${location.pathname}#o=${encodeOrder(order)}` : "";
+  saveDraft();
+  shareUrl = ready ? `${location.origin}${HOME}#o=${encodeOrder(order)}` : "";
   $("out").textContent = shareUrl;
   $("preview").href = shareUrl;
   $("share").hidden = !navigator.share;
@@ -445,12 +468,12 @@ async function readImage(file) {
   draft.extras = parsed.extras;
   draft.receiptTotal = parsed.total;
   const unpriced = parsed.items.filter(i => !i.cents).length;
-  $("found").textContent = !parsed.items.length
+  draft.found = !parsed.items.length
     ? "Couldn't find items in that image. Add them below."
     : unpriced
       ? `Found ${parsed.items.length} items, but ${unpriced} need a price. Fill them in below.`
       : `Found ${parsed.items.length} items. Check them below.`;
-  showResult();
+  goCheck();
 }
 
 // A self-contained sample of the friend view, so first-time visitors see what the link does.
@@ -484,7 +507,6 @@ function showCreate() {
   $("create").hidden = false;
   renderDemo();
   const drop = $("drop");
-  setStep("home");
   const read = f => readImage(f).catch(() => {
     setStep("home");
     $("status").textContent = "Couldn't read that image. Check your connection, or try another screenshot or type it in.";
@@ -504,15 +526,15 @@ function showCreate() {
     if (f) read(f);
   });
   $("manual").addEventListener("click", () => {
-    draft.items.push({ name: "", cents: 0 });
-    $("found").textContent = "Add each item and its price, then the tax, fees and tip.";
-    showResult();
+    Object.assign(draft, { items: [{ name: "", cents: 0 }], extras: [], receiptTotal: null, found: "Add each item and its price, then the tax, fees and tip." });
+    goCheck();
   });
   $("restart").addEventListener("click", () => {
-    Object.assign(draft, { items: [], extras: [], receiptTotal: null });
+    sessionStorage.removeItem("tabsies-draft");
     $("file").value = "";
     $("camera").value = "";
-    setStep("home");
+    history.pushState(null, "", HOME);
+    route();
   });
   $("add-item").addEventListener("click", () => { draft.items.push({ name: "", cents: 0 }); renderEditor(); });
   $("add-extra").addEventListener("click", () => { draft.extras.push({ name: "", cents: 0 }); renderEditor(); });
@@ -529,7 +551,7 @@ function showCreate() {
     updateLink();
   });
   if (new URLSearchParams(location.search).has("shared")) {
-    history.replaceState(null, "", location.pathname);
+    history.replaceState(null, "", HOME);
     caches.open("tabsies-share").then(async cache => {
       const shared = await cache.match("shared-receipt");
       if (!shared) return;
@@ -543,6 +565,8 @@ function showCreate() {
   $("share").addEventListener("click", () => {
     navigator.share({ title: "Split the bill", text: "Tap what you ordered and pay on Venmo", url: shareUrl });
   });
+  window.addEventListener("popstate", route);
+  route();
 }
 
 showReferrals();
