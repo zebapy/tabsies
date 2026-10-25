@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "",
+  "buildCommand": "mkdir -p public && cp -r index.html parse.js sw.js manifest.webmanifest icons art public/",
+  "outputDirectory": "public"
+}

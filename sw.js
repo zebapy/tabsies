@@ -1,5 +1,5 @@
 // Offline support plus the share target: share a receipt screenshot to Tabsies from the phone's share sheet.
-const CACHE = "tabsies-v10";
+const CACHE = "tabsies-v11";
 const SHELL = ["./", "index.html", "parse.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "art/receipt.png", "art/waving.png", "art/sitting.png"];
 const CDN = "https://cdn.jsdelivr.net/";
 
@@ -10,7 +10,7 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE && k !== "paymo-share").map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE && k !== "tabsies-share").map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -18,7 +18,7 @@ self.addEventListener("activate", event => {
 async function receiveShare(request) {
   const form = await request.formData();
   const file = form.get("receipt");
-  const cache = await caches.open("paymo-share");
+  const cache = await caches.open("tabsies-share");
   if (file) await cache.put("shared-receipt", new Response(file, { headers: { "content-type": file.type } }));
   return Response.redirect("./?shared=1", 303);
 }

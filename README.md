@@ -8,7 +8,7 @@ Split a food order on Venmo from a receipt screenshot.
 
 The order is stored in the link itself (`#o=…`), so there's no backend or database.
 
-Deployed to GitHub Pages from `main` by `.github/workflows/pages.yml`.
+Deployed to Vercel on every push to `main`. `vercel.json` copies an allowlist of site files into `public/`, so a new top-level file or folder has to be added to its `buildCommand`.
 
 ## Install as an app
 

@@ -498,14 +498,14 @@ function showCreate() {
 
   $("title").addEventListener("input", updateLink);
   // Your Venmo username is remembered on this device only.
-  $("venmo").value = localStorage.getItem("paymo-venmo") || "";
+  $("venmo").value = localStorage.getItem("tabsies-venmo") || "";
   $("venmo").addEventListener("input", () => {
-    localStorage.setItem("paymo-venmo", $("venmo").value.trim().replace(/^@/, ""));
+    localStorage.setItem("tabsies-venmo", $("venmo").value.trim().replace(/^@/, ""));
     updateLink();
   });
   if (new URLSearchParams(location.search).has("shared")) {
     history.replaceState(null, "", location.pathname);
-    caches.open("paymo-share").then(async cache => {
+    caches.open("tabsies-share").then(async cache => {
       const shared = await cache.match("shared-receipt");
       if (!shared) return;
       await cache.delete("shared-receipt");
