@@ -81,7 +81,7 @@ export function makeReceipt(seed, style) {
     card: String(r.int(1000, 9999)),
     subtotalLabel: style.startsWith("paper") ? r.pick(["SUBTOTAL", "Subtotal", "Sub Total", "Sub-Total"]) : "Subtotal",
     totalLabel: style.startsWith("paper") ? r.pick(["TOTAL", "Total", "TOTAL", "Amount Due", "Balance Due"]) : "Total",
-    font: r.pick(["DejaVu Sans Mono", "Liberation Mono", "FreeMono", "Courier 10 Pitch"]),
+    font: r.pick(["DejaVu Sans Mono", "Liberation Mono", "FreeMono", "JetBrains Mono"]),
     tipTable: r.chance(0.5),
   };
 

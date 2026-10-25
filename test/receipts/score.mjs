@@ -77,3 +77,16 @@ export function score(truth, read) {
     junkFees: extraFees.map(f => `${f.name} (${f.cents})`),
   };
 }
+
+// Accuracy over many scored scans, as percentages.
+export function summarize(scores) {
+  const sum = key => scores.reduce((s, x) => s + Number(x[key]), 0);
+  const pct = (n, d) => (d ? Math.round((n * 1000) / d) / 10 : null);
+  return {
+    scans: scores.length,
+    prices: pct(sum("itemsPriced"), sum("items")),
+    fees: pct(sum("feesRight"), sum("fees")),
+    addsUp: pct(sum("addsUp"), scores.length),
+    perfect: pct(sum("perfect"), scores.length),
+  };
+}

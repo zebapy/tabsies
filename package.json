@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "benchmark": "node test/receipts/benchmark.mjs",
     "receipts:generate": "node test/receipts/generate.mjs",
     "receipts:run": "node test/receipts/run.mjs",
     "receipts:scan": "node test/receipts/scan.mjs"

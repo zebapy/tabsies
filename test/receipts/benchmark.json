@@ -1,0 +1,131 @@
+{
+  "updated": "2026-10-25",
+  "results": {
+    "blur-heavy": {
+      "scans": 12,
+      "prices": 91.1,
+      "fees": 86.5,
+      "addsUp": 58.3,
+      "perfect": 50
+    },
+    "blur-light": {
+      "scans": 12,
+      "prices": 100,
+      "fees": 100,
+      "addsUp": 100,
+      "perfect": 100
+    },
+    "clean": {
+      "scans": 12,
+      "prices": 100,
+      "fees": 100,
+      "addsUp": 100,
+      "perfect": 100
+    },
+    "crumple": {
+      "scans": 12,
+      "prices": 91.1,
+      "fees": 97.3,
+      "addsUp": 66.7,
+      "perfect": 66.7
+    },
+    "faint-blurry": {
+      "scans": 6,
+      "prices": 13.6,
+      "fees": 0,
+      "addsUp": 0,
+      "perfect": 0
+    },
+    "faint": {
+      "scans": 6,
+      "prices": 54.5,
+      "fees": 54.5,
+      "addsUp": 0,
+      "perfect": 0
+    },
+    "jpeg": {
+      "scans": 12,
+      "prices": 98.2,
+      "fees": 100,
+      "addsUp": 91.7,
+      "perfect": 91.7
+    },
+    "low-res": {
+      "scans": 12,
+      "prices": 100,
+      "fees": 100,
+      "addsUp": 100,
+      "perfect": 100
+    },
+    "motion-blur": {
+      "scans": 12,
+      "prices": 51.8,
+      "fees": 35.1,
+      "addsUp": 0,
+      "perfect": 0
+    },
+    "noise": {
+      "scans": 12,
+      "prices": 98.2,
+      "fees": 100,
+      "addsUp": 91.7,
+      "perfect": 91.7
+    },
+    "perspective": {
+      "scans": 12,
+      "prices": 98.2,
+      "fees": 83.8,
+      "addsUp": 58.3,
+      "perfect": 41.7
+    },
+    "phone-photo": {
+      "scans": 12,
+      "prices": 50,
+      "fees": 51.4,
+      "addsUp": 16.7,
+      "perfect": 8.3
+    },
+    "rotate-10": {
+      "scans": 12,
+      "prices": 100,
+      "fees": 100,
+      "addsUp": 100,
+      "perfect": 100
+    },
+    "rotate-3": {
+      "scans": 12,
+      "prices": 100,
+      "fees": 100,
+      "addsUp": 100,
+      "perfect": 100
+    },
+    "shadow": {
+      "scans": 12,
+      "prices": 89.3,
+      "fees": 97.3,
+      "addsUp": 66.7,
+      "perfect": 66.7
+    },
+    "smudge": {
+      "scans": 12,
+      "prices": 82.1,
+      "fees": 91.9,
+      "addsUp": 66.7,
+      "perfect": 41.7
+    },
+    "real/market-deli.jpg": {
+      "scans": 1,
+      "prices": 100,
+      "fees": 100,
+      "addsUp": 100,
+      "perfect": 100
+    },
+    "all": {
+      "scans": 180,
+      "prices": 86.4,
+      "fees": 86.3,
+      "addsUp": 67.8,
+      "perfect": 63.9
+    }
+  }
+}

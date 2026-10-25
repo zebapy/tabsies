@@ -1,0 +1,43 @@
+# Checks receipt scanning on every change to it: fast parser tests, then the scan benchmark, which reads
+# fake and real receipts with the real app and fails when accuracy drops below test/receipts/benchmark.json.
+name: Scan tests
+
+on:
+  push:
+    branches: [main]
+    paths: [parse.js, index.html, test/**, package.json, package-lock.json, .github/workflows/scan-tests.yml]
+  pull_request:
+    paths: [parse.js, index.html, test/**, package.json, package-lock.json, .github/workflows/scan-tests.yml]
+  workflow_dispatch:
+
+jobs:
+  parser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The fonts the fake receipts are drawn with.
+      - run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core fonts-liberation fonts-freefont-ttf fonts-jetbrains-mono
+      - run: npx playwright install --with-deps chromium
+      - run: npm run benchmark -- --jobs 4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scan-benchmark
+          path: test/receipts/out-bench/results.json

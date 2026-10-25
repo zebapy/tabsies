@@ -1,19 +1,13 @@
 // Draws the fake receipts, then makes a worse copy of each one for every condition below.
-// Usage: node test/receipts/generate.mjs [--per-style 6] [--seed 1]
+// Usage: node test/receipts/generate.mjs [--per-style 6] [--seed 1] [--jobs 3] [--out test/receipts/out]
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { STYLES, makeReceipt, receiptHtml, receiptText } from "./receipts.mjs";
 import { CONDITIONS, applies } from "./conditions.mjs";
 
-const OUT = join(dirname(fileURLToPath(import.meta.url)), "out");
-const arg = (name, fallback) => {
-  const k = process.argv.indexOf(`--${name}`);
-  return k > 0 ? Number(process.argv[k + 1]) : fallback;
-};
-const PER_STYLE = arg("per-style", 6);
-const SEED = arg("seed", 1);
+export const DEFAULT_OUT = join(dirname(fileURLToPath(import.meta.url)), "out");
 
 function stageHtml(src, w, h, c, seed) {
   const s = w / 800;
@@ -86,27 +80,22 @@ async function finish({ png, downscale, noise, jpeg, seed }) {
   return canvas.toDataURL(jpeg ? "image/jpeg" : "image/png", jpeg || undefined).split(",")[1];
 }
 
-async function main() {
-  rmSync(OUT, { recursive: true, force: true });
-  for (const dir of ["truth", ...Object.keys(CONDITIONS)]) mkdirSync(join(OUT, dir), { recursive: true });
+// Draws perStyle receipts of each style into out, with a manifest.json listing every image.
+export async function generate({ out = DEFAULT_OUT, perStyle = 6, seed = 1, jobs = 3 } = {}) {
+  rmSync(out, { recursive: true, force: true });
+  for (const dir of ["truth", ...Object.keys(CONDITIONS)]) mkdirSync(join(out, dir), { recursive: true });
   const browser = await chromium.launch();
   const manifest = [];
-  const receipts = STYLES.flatMap((style, k) => Array.from({ length: PER_STYLE }, (_, n) => makeReceipt(SEED * 1000 + k * 100 + n, style)));
+  const receipts = STYLES.flatMap((style, k) => Array.from({ length: perStyle }, (_, n) => makeReceipt(seed * 1000 + k * 100 + n, style)));
 
-  for (const rc of receipts) {
+  async function draw(rc) {
     const paper = rc.style.startsWith("paper");
     const page = await browser.newPage({ viewport: { width: paper ? 400 : 390, height: 800 }, deviceScaleFactor: paper ? 2 : 3 });
     await page.setContent(receiptHtml(rc));
     const clean = await page.locator("#receipt").screenshot();
+    const size = await page.evaluate(async b64 => { const i = new Image(); i.src = "data:image/png;base64," + b64; await i.decode(); return [i.width, i.height]; }, clean.toString("base64"));
     await page.close();
-    writeFileSync(join(OUT, "truth", `${rc.id}.json`), JSON.stringify({ ...rc, text: receiptText(rc) }, null, 2));
-
-    const size = await (async () => {
-      const p = await browser.newPage();
-      const out = await p.evaluate(async b64 => { const i = new Image(); i.src = "data:image/png;base64," + b64; await i.decode(); return [i.width, i.height]; }, clean.toString("base64"));
-      await p.close();
-      return out;
-    })();
+    writeFileSync(join(out, "truth", `${rc.id}.json`), JSON.stringify({ ...rc, text: receiptText(rc) }, null, 2));
 
     for (const [name, c] of Object.entries(CONDITIONS)) {
       if (!applies(name, rc.style)) continue;
@@ -117,14 +106,24 @@ async function main() {
       const b64 = await page.evaluate(finish, { png: staged.toString("base64"), downscale: c.downscale, noise: c.noise, jpeg: c.jpeg, seed: rc.seed });
       await page.close();
       const file = join(name, `${rc.id}.${c.jpeg ? "jpg" : "png"}`);
-      writeFileSync(join(OUT, file), Buffer.from(b64, "base64"));
+      writeFileSync(join(out, file), Buffer.from(b64, "base64"));
       manifest.push({ id: rc.id, style: rc.style, condition: name, file });
     }
     console.log(`drew ${rc.id}`);
   }
-  writeFileSync(join(OUT, "manifest.json"), JSON.stringify(manifest, null, 2));
+
+  let next = 0;
+  await Promise.all(Array.from({ length: jobs }, async () => { while (next < receipts.length) await draw(receipts[next++]); }));
+  manifest.sort((a, b) => a.file.localeCompare(b.file));
+  writeFileSync(join(out, "manifest.json"), JSON.stringify(manifest, null, 2));
   await browser.close();
-  console.log(`${receipts.length} receipts x ${Object.keys(CONDITIONS).length} conditions = ${manifest.length} images in ${OUT}`);
+  console.log(`${receipts.length} receipts, ${manifest.length} images in ${out}`);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) main();
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const arg = (name, fallback) => {
+    const k = process.argv.indexOf(`--${name}`);
+    return k > 0 ? process.argv[k + 1] : fallback;
+  };
+  generate({ out: resolve(arg("out", DEFAULT_OUT)), perStyle: Number(arg("per-style", 6)), seed: Number(arg("seed", 1)), jobs: Number(arg("jobs", 3)) });
+}
