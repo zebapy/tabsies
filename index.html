@@ -127,9 +127,26 @@ input[type="number"] { font-family: var(--mono); }
 .r-head .muted { grid-column: 1 / -1; margin: 0; }
 .need { margin: 0; }
 .split .share { width: 64px; flex: none; display: grid; place-items: center; border-radius: 6px 999px 999px 6px; padding: 0; }
+
+/* install prompt, shown on every page until the app is installed */
+.install { display: flex; align-items: center; gap: 10px; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 10px 10px 10px 12px; margin-bottom: 4px; }
+.install img { width: 40px; height: 40px; border-radius: 10px; }
+.install p { flex: 1; margin: 0; display: grid; font-size: 14px; }
+.install .muted { font-size: 13px; }
+.install .muted svg { vertical-align: -3px; }
+.install .btn { width: auto; margin: 0; padding: 8px 16px; font-size: 15px; }
+.install .x { width: 32px; height: 32px; border: none; font-size: 20px; }
+#create:has(.loading:not([hidden])) .install { display: none; }
 </style>
 </head>
 <body>
+
+<aside class="install" id="install" aria-label="Install Tabsies" hidden>
+  <img src="icons/icon-192.png" alt="" width="192" height="192">
+  <p><strong>Get the Tabsies app</strong><span class="muted" id="install-how">Open it like an app, even offline.</span></p>
+  <button class="btn" id="install-btn" type="button" hidden>Install</button>
+  <button class="x" id="install-close" type="button" aria-label="Not now">×</button>
+</aside>
 
 <main class="wrap" id="friend" hidden>
   <header class="f-head">
@@ -603,8 +620,45 @@ function showCreate() {
 showReferrals();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 
+// Suggest installing on any page until it's installed. Chrome and Edge offer an Install button; on
+// iPhone and iPad there's no install API, so it explains Share > Add to Home Screen instead.
+const INSTALL_SNOOZE = 14 * 24 * 60 * 60 * 1000;
+function setupInstall() {
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  const snoozed = Date.now() - Number(localStorage.getItem("tabsies-install-closed")) < INSTALL_SNOOZE;
+  if (standalone || snoozed) return;
+  const banner = $("install");
+  const show = () => {
+    document.querySelector("main:not([hidden])").prepend(banner);
+    banner.hidden = false;
+  };
+  $("install-close").addEventListener("click", () => {
+    localStorage.setItem("tabsies-install-closed", String(Date.now()));
+    banner.hidden = true;
+  });
+  window.addEventListener("appinstalled", () => { banner.hidden = true; });
+
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (ios) {
+    $("install-how").innerHTML = 'Tap Share <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>, then <strong>Add to Home Screen</strong>.';
+    show();
+    return;
+  }
+  window.addEventListener("beforeinstallprompt", e => {
+    e.preventDefault();
+    $("install-btn").hidden = false;
+    $("install-btn").onclick = async () => {
+      e.prompt();
+      const { outcome } = await e.userChoice;
+      if (outcome === "accepted") banner.hidden = true;
+    };
+    show();
+  });
+}
+
 const match = location.hash.match(/^#o=([A-Za-z0-9_-]+)$/);
 match ? showFriend(decodeOrder(match[1])) : showCreate();
+setupInstall();
 </script>
 </body>
 </html>
