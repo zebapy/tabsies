@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icons/icon-512.png" alt="Tabsies mascot" width="160">
+</p>
+
 # Tabsies
 
 Split a food order on Venmo, Cash App or PayPal from a receipt screenshot.
