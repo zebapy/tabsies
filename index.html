@@ -192,7 +192,6 @@ input[type="number"] { font-family: var(--mono); }
     <label class="btn ghost camera-btn" for="camera"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo</label>
     <button class="link-btn" id="manual" type="button">Type it in instead</button>
   </div>
-  <p class="muted scan-note" data-step="home">Scanning uses plain text recognition on your phone, not AI, and can get things wrong. You'll check every line before sending.</p>
   <hr class="divider" data-step="home">
   <section class="stage" data-step="home" aria-label="Example of what your friends see">
     <div class="phone">
@@ -213,7 +212,7 @@ input[type="number"] { font-family: var(--mono); }
     <li><strong>Everyone pays for what they ordered</strong><span class="muted">Friends tap their own items, not an even split like Venmo's.</span></li>
     <li><strong>Tax, fees and tip split fairly</strong><span class="muted">Each person's share is based on how much food they ordered.</span></li>
     <li><strong>Payments fill themselves in</strong><span class="muted">One tap opens Venmo, Cash App or PayPal with the right amount.</span></li>
-    <li><strong>Free and private</strong><span class="muted">The receipt is read on your phone, and the order lives in the link. Nothing is stored on a server.</span></li>
+    <li><strong>Free and private</strong><span class="muted">The receipt is read on your phone with plain text recognition, and the order lives in the link. Nothing is stored or sent to a server or AI. Scanning can misread things, so you check every line before sending.</span></li>
   </ul>
 
   <section class="loading" data-step="loading" aria-live="polite">
@@ -228,7 +227,7 @@ input[type="number"] { font-family: var(--mono); }
     <h1>Check your receipt</h1>
     <button class="link-btn" id="restart" type="button">Start over</button>
     <p class="muted" id="found"></p>
-    <p class="muted scan-note" id="scan-note">Scanning can misread prices or names, so check each line. It's plain text recognition on your phone, not AI.</p>
+    <p class="muted scan-note" id="scan-note">Scanning can misread prices or names, so check each line.</p>
   </header>
   <section id="editor" data-step="result" style="display:grid;gap:12px">
     <div class="card">
