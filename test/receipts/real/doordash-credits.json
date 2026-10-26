@@ -1,0 +1,15 @@
+{
+  "note": "DoorDash order details screenshot (Android, light mode) with a Spanish bag fee line, Tarifa por bolsa, and a negative DoorDash Credits line.",
+  "lines": [
+    { "name": "Chicken Tender Basket", "qty": 1, "cents": 1960 },
+    { "name": "Stonewood Farm Turkey Burger", "qty": 1, "cents": 1980 },
+    { "name": "Kids Cheeseburger", "qty": 1, "cents": 990 }
+  ],
+  "expectedFees": [
+    { "label": "Tarifa por bolsa", "cents": 10 },
+    { "label": "Estimated Tax", "cents": 493 },
+    { "label": "DoorDash Credits", "cents": -117 },
+    { "label": "Staff Tip", "cents": 813 }
+  ],
+  "total": 6129
+}

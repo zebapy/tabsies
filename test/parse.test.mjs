@@ -36,6 +36,12 @@ test("delivery app items with the price on the next line", () => {
   assert.equal(r.total, 2043);
 });
 
+test("credits and other negative lines count against the total, and Spanish fee labels are fees", () => {
+  const r = parseReceipt("1x Burger\n$10.00\nSubtotal $10.00\nTarifa por bolsa $0.10\nDoorDash Credits -$1.17\nCashback -$0.50\nTotal $8.43");
+  assert.deepEqual(cents(r.items), [["Burger", 1000]]);
+  assert.deepEqual(cents(r.extras), [["Tarifa por bolsa", 10], ["DoorDash Credits", -117], ["Cashback", -50]]);
+});
+
 test("quantities on paper slips, but not inside item names", () => {
   assert.deepEqual(cents(parseReceipt("1 Lo Mein 13.50\n2 Fries 13.18\nTOTAL 26.68").items), [["Lo Mein", 1350], ["Fries", 659], ["Fries", 659]]);
   assert.deepEqual(cents(parseReceipt("12 pc Wings 14.99\nGarlic Knots 6.75\nTOTAL 21.74").items), [["12 pc Wings", 1499], ["Garlic Knots", 675]]);

@@ -16,8 +16,9 @@
   const UNREAD_PRICE = /\s\d{3,4}((?:\s+[A-Za-z*])+)\s*$/;
   // "Total Tax" sums the tax lines above it on grocery receipts.
   const TOTAL_TAX = /\btota[l1I|)]\s+tax(es)?\b/i;
-  const EXTRA = /\b(tax|taxes|tip|gratuity|fee|fees|surcharge|service|delivery|bag)\b/i;
-  const DISCOUNT = /\b(discount|promo|promotion|savings|credit|coupon)\b/i;
+  // Spanish labels too, since DoorDash mixes them in ("Tarifa por bolsa" is a bag fee).
+  const EXTRA = /\b(tax|taxes|tip|gratuity|fee|fees|surcharge|service|delivery|bag|tarifa|bolsa|propina|impuestos?|cargo)\b/i;
+  const DISCOUNT = /\b(discounts?|promos?|promotions?|savings|credits?|coupons?|descuentos?)\b/i;
   // Payment lines only come after the total, so they end the receipt when the total itself was unreadable.
   const PAYMENT = /\b(visa|mastercard|amex|paid with|charged to)\b/i;
 
@@ -102,9 +103,11 @@
       }
       if (TOTAL.test(line)) { total = price; break; }
       if (PAYMENT.test(line)) break;
-      if (pending && (EXTRA.test(line) || DISCOUNT.test(line))) { items.push(...expand(pending.name, pending.qty, 0)); pending = null; }
-      if (price !== null && (EXTRA.test(line) || DISCOUNT.test(line))) {
-        const cents = DISCOUNT.test(line) ? -Math.abs(price) : price;
+      // A negative amount like "-$1.17" is a credit or discount whatever it's called.
+      const discount = DISCOUNT.test(line) || price < 0;
+      if (pending && (EXTRA.test(line) || discount)) { items.push(...expand(pending.name, pending.qty, 0)); pending = null; }
+      if (price !== null && (EXTRA.test(line) || discount)) {
+        const cents = discount ? -Math.abs(price) : price;
         if (cents !== 0) extras.push({ name: cleanName(line.split("$")[0]) || "Fee", cents });
         continue;
       }
