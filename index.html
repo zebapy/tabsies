@@ -273,7 +273,7 @@ input[type="number"] { font-family: var(--mono); }
     </div>
   </section>
   <footer class="tip" data-step="home result">
-    <a href="https://venmo.com/?txn=pay&amp;audience=private&amp;recipients=zebpykosz&amp;amount=2.00&amp;note=%F0%9F%A5%90%20Croissant%20for%20the%20Tabsies%20maker" target="_blank" rel="noopener">🥐 Buy me a croissant</a>
+    <a id="croissant" href="https://venmo.com/?txn=pay&amp;audience=private&amp;recipients=zebpykosz&amp;amount=2.00&amp;note=%F0%9F%A5%90%20Croissant%20for%20the%20Tabsies%20maker" target="_blank" rel="noopener">🥐 Buy me a croissant</a>
     <span class="muted refs">Tabsies is free. If it saved you some math, a croissant is appreciated. Built by <a href="https://zeb.codes" target="_blank" rel="noopener">zeb.codes</a>.</span>
     <span class="muted refs" id="refs" hidden>Friend not on Venmo yet? Send them my invite for <a id="ref-venmo" target="_blank" rel="noopener" hidden>Venmo</a><span id="ref-or" hidden> or </span><a id="ref-cashapp" target="_blank" rel="noopener" hidden>Cash App</a>.</span>
   </footer>
@@ -284,6 +284,31 @@ input[type="number"] { font-family: var(--mono); }
 const $ = id => document.getElementById(id);
 const fmt = c => "$" + (c / 100).toFixed(2);
 const toCents = v => Math.round((parseFloat(v) || 0) * 100);
+
+// Analytics. Nothing loads until a project key is filled in. Clicks aren't autocaptured and the #o= part of
+// every URL is dropped before sending, so order contents and payment handles never leave the browser.
+const POSTHOG = { key: "", host: "https://us.i.posthog.com" };
+const withoutHash = props => {
+  ["$current_url", "$initial_current_url", "$referrer", "$initial_referrer"].forEach(k => {
+    if (typeof props?.[k] === "string") props[k] = props[k].split("#")[0];
+  });
+};
+if (POSTHOG.key) {
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog&&window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  posthog.init(POSTHOG.key, {
+    api_host: POSTHOG.host,
+    person_profiles: "identified_only",
+    capture_pageview: "history_change",
+    autocapture: false,
+    disable_session_recording: true,
+    before_send: event => {
+      withoutHash(event.properties);
+      withoutHash(event.$set_once);
+      return event;
+    },
+  });
+}
+const track = (event, props) => window.posthog?.capture(event, props);
 
 // Zeb's personal invite links; a link stays hidden until it's filled in.
 const REFERRALS = { venmo: "", cashapp: "" };
@@ -329,6 +354,7 @@ function showFriend(order) {
     $("f-to").append(Object.assign(document.createElement("strong"), { textContent: m.show(cleanHandle(order[m.key])) }), `${k ? "" : " back"} on ${m.name}`);
   });
   const links = methods.map((m, k) => Object.assign(document.createElement("a"), { className: k ? "btn ghost" : "btn", target: "_blank", rel: "noopener", hidden: true }));
+  track("order_opened", { items: order.i.length, fees: (order.f || []).length, methods: methods.map(m => m.name) });
   $("f-pays").append(...links);
   document.title = order.t ? `${order.t} · Tabsies` : "Tabsies";
   const subtotal = order.i.reduce((s, [, c]) => s + c, 0);
@@ -372,13 +398,17 @@ function showFriend(order) {
     $("f-tot").textContent = fmt(total);
     $("f-pick").hidden = picked.size > 0;
     const note = `${order.t ? order.t + ": " : ""}${[...picked].map(k => order.i[k][0]).join(", ")}`;
+    payProps = { items_picked: picked.size, items: order.i.length, amount: total / 100 };
     // With more than one way to pay, the buttons sit side by side and the total shows above them.
     methods.forEach((m, k) => {
       links[k].hidden = !picked.size;
       links[k].href = m.link(cleanHandle(order[m.key]), total, note);
       links[k].textContent = methods.length > 1 ? m.name : `Pay ${fmt(total)} on ${m.name}`;
     });
-  }  update();
+  }
+  let payProps = {};
+  methods.forEach((m, k) => links[k].addEventListener("click", () => track("pay_opened", { method: m.name, ...payProps })));
+  update();
 }
 
 /* ---------- creator view ---------- */
@@ -452,6 +482,7 @@ function showResult() {
 
 // The share link is rebuilt on every edit, so it's always ready to send.
 let shareUrl = "";
+let shareProps = {};
 function updateLink() {
   const order = {
     i: draft.items.filter(i => i.name.trim() && i.cents > 0).map(i => [i.name.trim(), i.cents]),
@@ -469,6 +500,7 @@ function updateLink() {
   $("change-handles").hidden = askHandles;
   $("change-handles").textContent = `Friends pay ${methods.map(m => m.show(order[m.key])).join(", ")} · Change`;
   saveDraft();
+  shareProps = { items: order.i.length, fees: order.f.length, methods: methods.map(m => m.name), scanned: Boolean(draft.scanned) };
   shareUrl = ready ? `${location.origin}${HOME}#o=${encodeOrder(order)}` : "";
   $("out").textContent = shareUrl;
   $("preview").href = shareUrl;
@@ -734,7 +766,8 @@ function showProgress(text, fraction) {
   $("meter").style.width = `${Math.round(fraction * 100)}%`;
 }
 
-async function readImage(file) {
+async function readImage(file, source) {
+  const started = Date.now();
   $("status").textContent = "";
   showProgress("Loading the text reader…", 0.05);
   setStep("loading");
@@ -752,6 +785,7 @@ async function readImage(file) {
   const unpriced = parsed.items.filter(i => !i.cents).length;
   const guessed = parsed.items.find(i => i.guessed);
   draft.scanned = true;
+  track("receipt_scanned", { source, items: parsed.items.length, unpriced, guessed: Boolean(guessed), fees: parsed.extras.length, found_total: parsed.total !== null, seconds: Math.round((Date.now() - started) / 1000) });
   draft.found = !parsed.items.length
     ? "Couldn't find items in that image. Add them below."
     : guessed
@@ -793,25 +827,27 @@ function showCreate() {
   $("create").hidden = false;
   renderDemo();
   const drop = $("drop");
-  const read = f => readImage(f).catch(() => {
+  const read = (f, source) => readImage(f, source).catch(() => {
+    track("receipt_scan_failed", { source });
     setStep("home");
     $("status").textContent = "Couldn't read that image. Check your connection, or try another screenshot or type it in.";
   });
-  $("file").addEventListener("change", e => { if (e.target.files[0]) read(e.target.files[0]); });
-  $("camera").addEventListener("change", e => { if (e.target.files[0]) read(e.target.files[0]); });
+  $("file").addEventListener("change", e => { if (e.target.files[0]) read(e.target.files[0], "file"); });
+  $("camera").addEventListener("change", e => { if (e.target.files[0]) read(e.target.files[0], "camera"); });
   drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
   drop.addEventListener("dragleave", () => drop.classList.remove("over"));
   drop.addEventListener("drop", e => {
     e.preventDefault();
     drop.classList.remove("over");
     const f = [...e.dataTransfer.files].find(f => f.type.startsWith("image/"));
-    if (f) read(f);
+    if (f) read(f, "drop");
   });
   window.addEventListener("paste", e => {
     const f = [...e.clipboardData.files].find(f => f.type.startsWith("image/"));
-    if (f) read(f);
+    if (f) read(f, "paste");
   });
   $("manual").addEventListener("click", () => {
+    track("manual_entry_started");
     Object.assign(draft, { items: [{ name: "", cents: 0 }], extras: [], receiptTotal: null, scanned: false, found: "Add each item and its price, then the tax, fees and tip." });
     goCheck();
   });
@@ -846,13 +882,15 @@ function showCreate() {
       const shared = await cache.match("shared-receipt");
       if (!shared) return;
       await cache.delete("shared-receipt");
-      read(await shared.blob());
+      read(await shared.blob(), "share_sheet");
     });
   }
   $("copy").addEventListener("click", () => {
     navigator.clipboard.writeText(shareUrl).then(() => { $("copy").textContent = "Copied"; });
+    track("link_copied", shareProps);
   });
   $("share").addEventListener("click", () => {
+    track("link_shared", shareProps);
     navigator.share({ title: "Split the bill", text: "Tap what you ordered and pay me back", url: shareUrl });
   });
   window.addEventListener("popstate", route);
@@ -860,6 +898,7 @@ function showCreate() {
 }
 
 showReferrals();
+$("croissant").addEventListener("click", () => track("croissant_tapped"));
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 
 // Suggest installing on any page until it's installed. Chrome and Edge offer an Install button; on
@@ -878,7 +917,7 @@ function setupInstall() {
     localStorage.setItem("tabsies-install-closed", String(Date.now()));
     banner.hidden = true;
   });
-  window.addEventListener("appinstalled", () => { banner.hidden = true; });
+  window.addEventListener("appinstalled", () => { banner.hidden = true; track("app_installed"); });
 
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   if (ios) {
