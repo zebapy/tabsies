@@ -287,7 +287,7 @@ const toCents = v => Math.round((parseFloat(v) || 0) * 100);
 
 // Analytics. Nothing loads until a project key is filled in. Clicks aren't autocaptured and the #o= part of
 // every URL is dropped before sending, so order contents and payment handles never leave the browser.
-const POSTHOG = { key: "", host: "https://us.i.posthog.com" };
+const POSTHOG = { key: "phc_CXomYUySPp7R2yHB44FLzm5kt2a36WwkbqtgoVRiwEfw", host: "https://us.i.posthog.com" };
 const withoutHash = props => {
   ["$current_url", "$initial_current_url", "$referrer", "$initial_referrer"].forEach(k => {
     if (typeof props?.[k] === "string") props[k] = props[k].split("#")[0];
